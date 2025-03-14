@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title></title>
+  </head>
+  <body>
+    <script>
+      let hostname = location.hostname
+      let port = location.port
+      if (hostname != "") {
+        window.location = `${location.protocol}//${hostname}:${port}/dist/index.html`
+      }
+    </script>
+  </body>
+</html>
