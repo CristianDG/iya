@@ -1,3 +1,5 @@
+// TODO: DG_ALL_IMPLEMENTATION
+
 // types.h {{{
 #ifndef CDG_TYPES_H
 #define CDG_TYPES_H
@@ -53,7 +55,7 @@ typedef double f64;
 typedef u32 b32;
 
 #define KILOBYTE 1024
-#define MEGABYTE 1048576
+#define MEGABYTE 1048576L
 
 #define DG_REINTERPRET_CAST(type, val) \
   (*((type *)&(val)))
@@ -64,26 +66,6 @@ typedef u32 b32;
 #define DG_DYNAMIC_ACCESS(type, offset) \
   (((void *)(type))+offset)
 
-
-#ifndef DG_MEMSET
-#include <string.h>
-#define DG_MEMSET memset
-#endif // DG_MEMSET
-
-#ifndef DG_MEMCPY
-#include <string.h>
-#define DG_MEMCPY memcpy
-#endif // DG_MEMCPY
-
-#ifndef DG_LOG_ERROR
-#include <stdio.h>
-#define DG_LOG_ERROR(args...) fprintf(stderr, args)
-#endif // DG_LOG_ERROR
-
-#ifndef DG_LOG
-#include <stdio.h>
-#define DG_LOG(args...) fprintf(stdout, args)
-#endif // DG_LOG
 
 #if !defined(DG_ASSERT_EXPR) // {{{
 // NOTE: esse assert funciona como expressão: bool assert(bool)
@@ -104,11 +86,10 @@ DG_STATEMENT({ \
 })
 #endif // DG_ASSERT }}}
 
-#endif
-// }}}
+#endif // }}}
 
-#ifndef CDG_ALLOC_C
-// alloc.c {{{
+// arena allocator (+ allocator struct ...?) {{{
+#ifndef CDG_ALLOC_C // alloc.c {{{
 #define CDG_ALLOC_C
 
 #include <stddef.h>
@@ -158,8 +139,30 @@ void arena_clear(Arena *arena);
 #define arena_alloc_pass_loc(arena, size, file, line) _arena_alloc(arena, size, DEFAULT_ALIGNMENT)
 #endif //DG_ARENA_DEBUG
 
+#endif // CDG_ALLOC_C }}}
+#if defined(DG_ALLOC_IMPLEMENTATION) // {{{
 
-#ifdef DG_ALLOC_IMPLEMENTATION // {{{
+#ifndef DG_MEMSET
+#include <string.h>
+#define DG_MEMSET memset
+#endif // DG_MEMSET
+
+#ifndef DG_MEMCPY
+#include <string.h>
+#define DG_MEMCPY memcpy
+#endif // DG_MEMCPY
+
+#ifndef DG_LOG_ERROR
+#include <stdio.h>
+#define DG_LOG_ERROR(args...) fprintf(stderr, args)
+#endif // DG_LOG_ERROR
+
+#ifndef DG_LOG
+#include <stdio.h>
+#define DG_LOG(args...) fprintf(stdout, args)
+#endif // DG_LOG
+
+// TODO: make scratch arena
 
 Arena arena_init_buffer(u8 *data, size_t size)
 {
@@ -236,10 +239,9 @@ void arena_clear(Arena *arena)
 
 #endif // DG_ALLOC_IMPLEMENTATION }}}
 // }}}
-#endif
 
-#ifndef CDG_CONTAINER_C
 // dynamic array and other containers...? {{{
+#ifndef CDG_CONTAINER_C  // {{{
 #define CDG_CONTAINER_C
 // TODO: include arena.c
 
@@ -254,6 +256,8 @@ struct { \
 
 typedef Make_Dynamic_Array_type(void) _Any_Dynamic_Array;
 
+#endif // }}} CDG_CONTAINER_C
+#if defined(DG_CONTAINER_IMPLEMENTATION) // {{{
 void dynamic_array_grow(_Any_Dynamic_Array *arr, Arena *a, u32 item_size) {
   _Any_Dynamic_Array replica = {0};
   DG_MEMCPY(&replica, arr, sizeof(replica));
@@ -313,12 +317,11 @@ void dg_make_slice(Arena *a, _Any_Slice *slice, u64 len, u64 item_size){
 }
 
 #define SLICE_AT(slice, idx) (slice.data[idx < 0 ? slice.len + idx : idx])
-
+#endif // }}} defined(DG_CONTAINER_IMPLEMENTATION)
 // }}}
-#endif // CDG_CONTAINER_C
 
-#ifndef CDG_MATRIX_H
 // Matrix types and operations {{{
+#ifndef CDG_MATRIX_H // {{{
 #define CDG_MATRIX_H
 
 typedef struct {
@@ -328,6 +331,9 @@ typedef struct {
 } DG_Matrix_View;
 
 #define MAT_AT(mat, row, col) (mat).data[row*(mat).cols + col]
+
+#endif // }}} CDG_MATRIX_H
+#if defined(DG_MATRIX_IMPLEMENTATION) // {{{
 
 DG_Matrix_View matrix_alloc(Arena *a, u32 rows, u32 cols){
   DG_Matrix_View m = {
@@ -402,10 +408,10 @@ void dg_matrix_print(DG_Matrix_View m, char *name) {
 #define matrix_print(x) dg_matrix_print(x, STR(x))
 
 
+#endif // }}} DG_MATRIX_IMPLEMENTATION
 // }}}
-#endif // CDG_MATRIX_H
 
-// math {{{
+// TODO: math {{{
 #ifndef CDG_MATH_H
 #define CDG_MATH_H
 
