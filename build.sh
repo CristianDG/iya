@@ -7,22 +7,22 @@ else
 fi
 
 : ${CC=clang}
-
-linker_flags=""
-linker_flags+=" -Wl,--no-entry -Wl,--export=__heap_base"
-if [[ $CC == "zig cc" ]]; then
-  linker_flags+=" -Wl,--import-symbols"
-else
-  linker_flags+=" -Wl,--import-undefined"
-fi
-
-linker_flags+=" -Wl,--export=main"
-linker_flags+=" -Wl,--export=fds"
+: ${LINKER="wasm-ld"}
 
 flags=""
 flags+=" -g -fno-builtin --no-standard-libraries"
+flags+=" -gdwarf-5 -gpubnames"
+# flags+=" -gsplit-dwarf"
 flags+=" --target=wasm32-freestanding "
-flags+=" $linker_flags"
 
-$CC -o dist/out.wasm src/platform_wasm.c $flags
+linker_flags=""
+linker_flags+=" -Wl,--no-entry -Wl,--export=__heap_base"
+linker_flags+=" -Wl,--import-undefined"
+linker_flags+=" -Wl,--export-all"
 
+
+$CC -c -o dist/out.o src/platform_wasm.c $flags
+
+$LINKER -o dist/out.wasm dist/out.o ${linker_flags//-Wl,/}
+
+rm dist/out.o
