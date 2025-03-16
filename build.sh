@@ -1,11 +1,5 @@
 set -euo pipefail
 
-if [ -f ./.env ]; then
-  source ./.env
-else
-  echo ".env not found"
-fi
-
 : ${CC=clang}
 : ${LINKER="wasm-ld"}
 

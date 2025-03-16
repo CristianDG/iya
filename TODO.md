@@ -1,1 +1,0 @@
-- [ ] remover dist da main e colocar somente na gh-pages
