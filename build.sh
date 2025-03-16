@@ -6,8 +6,16 @@ else
   echo ".env not found"
 fi
 
+: ${CC=clang}
+
 linker_flags=""
-linker_flags+=" -Wl,--no-entry -Wl,--export=__heap_base -Wl,--import-symbols"
+linker_flags+=" -Wl,--no-entry -Wl,--export=__heap_base"
+if [[ $CC == "zig cc" ]]; then
+  linker_flags+=" -Wl,--import-symbols"
+else
+  linker_flags+=" -Wl,--import-undefined"
+fi
+
 linker_flags+=" -Wl,--export=main"
 linker_flags+=" -Wl,--export=fds"
 

@@ -38,6 +38,8 @@ extern int main(void)
     permanent_arena = arena_init_buffer(mem, size);
   }
 
+  DG_CRASH();
+
   return 69;
 }
 
