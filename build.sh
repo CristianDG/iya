@@ -4,6 +4,7 @@ set -euo pipefail
 : ${LINKER="wasm-ld"}
 
 flags=""
+flags+=" -DDG_PLATFORM_WASM"
 flags+=" -g -fno-builtin --no-standard-libraries"
 flags+=" -gdwarf-5 -gpubnames"
 # flags+=" -gsplit-dwarf"

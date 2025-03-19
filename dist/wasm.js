@@ -1,4 +1,4 @@
-async function runWasm(wasmPath, consoleElement, extraForeignImports, wasmMemoryInterface, intSize = 4) {
+async function runWasm(wasmPath, extraForeignImports) {
 
   let imports = {}
   let exports = {}
@@ -8,9 +8,11 @@ async function runWasm(wasmPath, consoleElement, extraForeignImports, wasmMemory
       ...imports,
       ...Object.fromEntries(
         Object.entries(extraForeignImports)
-          .map(([name, foreignImport]) => [name, foreignImport(wasmMemoryInterface)])),
+          .map(([name, foreignImport]) => [name, foreignImport])),
     }
   }
+
+  console.log(imports)
 
   const response = await fetch(wasmPath)
   const file = await response.arrayBuffer()

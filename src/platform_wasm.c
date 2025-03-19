@@ -1,13 +1,12 @@
-#define DG_CRASH() __builtin_trap()
-
 #define CDG_MATH_H
 #include "cdg_base.c"
 
-#define DG_MEMSET(ptr, val, size) 0
-#define DG_MEMCPY(dst, src, size) 0
-#define DG_LOG_ERROR(args...)
-#define DG_LOG(args...)
+extern void console_error(char *fmt, ...);
 
+#define DG_MEMSET(ptr, val, size) 0 /*stub*/
+#define DG_MEMCPY(dst, src, size) 0 /*stub*/
+#define DG_LOG_ERROR(args...) /*stub*/
+#define DG_LOG(args...) /*stub*/
 
 #define DG_CONTAINER_IMPLEMENTATION
 #define DG_ALLOC_IMPLEMENTATION

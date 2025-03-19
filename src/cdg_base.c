@@ -14,12 +14,7 @@
  * - assert + debugger trap
  */
 
-
 #define DG_STATEMENT(x) do { x } while (0)
-
-#ifndef DG_CRASH
-#define DG_CRASH() (*((volatile int *)0) = 69)
-#endif // DG_CRASH
 
 #define ARRAY_LEN(arr) (sizeof(arr) / sizeof((arr)[0]))
 #define MAX(x, y) ((x) >= (y) ? (x) : (y))
@@ -66,6 +61,14 @@ typedef u32 b32;
 #define DG_DYNAMIC_ACCESS(type, offset) \
   (((void *)(type))+offset)
 
+#ifndef DG_CRASH
+
+#if defined(DG_PLATFORM_WASM)
+#define DG_CRASH() __builtin_trap()
+#else
+#define DG_CRASH() (*((volatile int *)0) = 69)
+#endif
+#endif // DG_CRASH
 
 #if !defined(DG_ASSERT_EXPR) // {{{
 // NOTE: esse assert funciona como expressão: bool assert(bool)
