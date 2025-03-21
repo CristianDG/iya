@@ -26,6 +26,10 @@
 #define STR(x) #x
 #define GLUE(a,b) a##b
 
+// #define DG_NARGS(...) ((int)(sizeof((int[]){ __VA_ARGS__ })/sizeof(int)))
+
+#define ELEVENTH_ARGUMENT(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, ...) a11
+#define DG_NARGS(...) ELEVENTH_ARGUMENT(dummy, ## __VA_ARGS__, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
 
 #define is_power_of_two(x) ((x != 0) && ((x & (x - 1)) == 0))
 

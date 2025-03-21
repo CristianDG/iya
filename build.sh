@@ -5,6 +5,7 @@ set -euo pipefail
 
 flags=""
 flags+=" -DDG_PLATFORM_WASM"
+flags+=" -Ithird_party"
 flags+=" -g -fno-builtin --no-standard-libraries"
 flags+=" -gdwarf-5 -gpubnames"
 # flags+=" -gsplit-dwarf"
