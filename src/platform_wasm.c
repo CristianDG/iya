@@ -29,9 +29,6 @@ void *memset(void *ptr, u8 val, usize size) {
 #define DG_LOG_ERROR(args...) DG_LOG_IMPL(console_error, GLUE(buf, identifier), args)
 #define DG_LOG(args...) DG_LOG_IMPL(console_log, GLUE(buf, identifier), args)
 
-#define DG_CONTAINER_IMPLEMENTATION
-#define DG_ALLOC_IMPLEMENTATION
-#define DG_MATRIX_IMPLEMENTATION
 #include "cdg_base.c"
 
 // TODO: include platform independent file
@@ -50,20 +47,5 @@ void free(void* p) {
   // lol
 }
 
-Arena permanent_arena = {};
+#include "iya.c"
 
-extern int main(void)
-{
-  {
-    usize size = 2 * KILOBYTE;
-    u8 *mem = malloc(size);
-    permanent_arena = arena_init_buffer(mem, size);
-  }
-
-
-  return 69;
-}
-
-extern int fds(void) {
-  return 420;
-}

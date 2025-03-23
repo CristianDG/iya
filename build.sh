@@ -4,6 +4,7 @@ set -euo pipefail
 : ${LINKER="wasm-ld"}
 
 flags=""
+flags+=" -std=c11"
 flags+=" -DDG_PLATFORM_WASM"
 flags+=" -Ithird_party"
 flags+=" -g -fno-builtin --no-standard-libraries"
