@@ -8,5 +8,8 @@
   <body>
     <h1>oi</h1>
     <script type="text/javascript" src="wasm.js"></script>
+    <script type="text/javascript">
+      window.wasm_module = (await runWasm("out.wasm", { "env": { console_log: console.log, console_error:console.error } })).instance.exports
+    </script>
   </body>
 </html>
