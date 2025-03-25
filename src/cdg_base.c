@@ -31,6 +31,17 @@
 #define ELEVENTH_ARGUMENT(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, ...) a11
 #define DG_NARGS(...) ELEVENTH_ARGUMENT(dummy, ## __VA_ARGS__, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
 
+
+#if !defined(DG_STATIC_ASSERT)
+
+#define DG_STATIC_ASSERT(args...) DG_STATIC_ASSERT_IMPL(DG_NARGS(args), args)
+#define DG_STATIC_ASSERT_IMPL(n, args...) GLUE(DG_STATIC_ASSERT_, n)(args)
+#define DG_STATIC_ASSERT_1(expr) _Static_assert(expr, "")
+#define DG_STATIC_ASSERT_2(expr, msg) _Static_assert(expr, msg)
+
+#endif
+
+
 #define is_power_of_two(x) ((x != 0) && ((x & (x - 1)) == 0))
 
 typedef uint8_t  u8;
