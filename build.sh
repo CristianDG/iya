@@ -13,7 +13,7 @@ flags+=" -gdwarf-5 -gpubnames"
 flags+=" --target=wasm32-freestanding "
 
 linker_flags=""
-linker_flags+=" -Wl,--no-entry -Wl,--export=__heap_base"
+linker_flags+=" -Wl,--no-entry -Wl,--export=__heap_base -Wl,--export=__heap_end"
 linker_flags+=" -Wl,--import-undefined"
 linker_flags+=" -Wl,--export-all"
 

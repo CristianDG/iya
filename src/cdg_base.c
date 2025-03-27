@@ -110,6 +110,12 @@ DG_STATEMENT({ \
 #ifndef CDG_ALLOC_C // alloc.c {{{
 #define CDG_ALLOC_C
 
+/* TODO:
+ *  - GetScratch macro
+ *  - ReleaseScratch macro
+ *  - WithScratch macro usando for
+ * */
+
 #include <stddef.h>
 // #include <string.h> // for memset
 
@@ -135,7 +141,7 @@ typedef struct {
 typedef struct {
   Arena *arena;
   u32 cursor;
-} Temorary_Arena_Memory;
+} Temporary_Arena_Memory;
 
 
 Arena arena_init_buffer(u8 *data, size_t size);
@@ -144,8 +150,8 @@ uintptr_t align_forward(uintptr_t ptr, size_t alignment);
 void *_arena_alloc(Arena *arena, size_t size, size_t alignment);
 void *_tracking_arena_alloc(Arena *arena, size_t size, size_t alignment, char *file, i32 line);
 
-Temorary_Arena_Memory temp_arena_memory_begin(Arena *a);
-void temp_arena_memory_end(Temorary_Arena_Memory tmp_mem);
+Temporary_Arena_Memory temp_arena_memory_begin(Arena *a);
+void temp_arena_memory_end(Temporary_Arena_Memory *tmp_mem);
 
 void arena_clear(Arena *arena);
 
@@ -236,17 +242,18 @@ void *_tracking_arena_alloc(Arena *arena, size_t size, size_t alignment, char *f
   return ptr;
 }
 
-Temorary_Arena_Memory temp_arena_memory_begin(Arena *a)
+Temporary_Arena_Memory temp_arena_memory_begin(Arena *a)
 {
-  return (Temorary_Arena_Memory) {
+  return (Temporary_Arena_Memory) {
     .arena = a,
     .cursor = a->cursor,
   };
 }
 
-void temp_arena_memory_end(Temorary_Arena_Memory tmp_mem)
+void temp_arena_memory_end(Temporary_Arena_Memory *tmp_mem)
 {
-  tmp_mem.arena->cursor = tmp_mem.cursor;
+  tmp_mem->arena->cursor = tmp_mem->cursor;
+  tmp_mem->arena = 0;
 }
 
 // TODO:
@@ -265,14 +272,14 @@ void arena_clear(Arena *arena)
 
 // NOTE: implementation from https://nullprogram.com/blog/2023/10/05/
 
-#define Make_Dynamic_Array_type(type) \
+#define Make_Dynamic_Array_Type(type) \
 struct { \
   type *data; \
   i32 len; \
   i32 cap; \
 }
 
-typedef Make_Dynamic_Array_type(void) _Any_Dynamic_Array;
+typedef Make_Dynamic_Array_Type(void) _Any_Dynamic_Array;
 
 void _make_dynamic_array(_Any_Dynamic_Array *arr, u32 capacity, Arena *a, u32 item_size);
 #define make_dynamic_array(arr, arena, capacity) _make_dynamic_array((_Any_Dynamic_Array *) arr, capacity, arena, sizeof((arr)->data))
@@ -281,7 +288,10 @@ void _make_dynamic_array(_Any_Dynamic_Array *arr, u32 capacity, Arena *a, u32 it
 #if defined(DG_CONTAINER_IMPLEMENTATION) // {{{
 
 void _make_dynamic_array(_Any_Dynamic_Array *arr, u32 capacity, Arena *a, u32 item_size) {
-  DG_ASSERT(false);
+  _Any_Dynamic_Array replica = {0};
+  replica.cap = capacity;
+  replica.data = arena_alloc(a, 2 * item_size * replica.cap);
+  DG_MEMCPY(arr, &replica, sizeof(replica));
 }
 
 void dynamic_array_grow(_Any_Dynamic_Array *arr, Arena *a, u32 item_size) {
@@ -313,6 +323,14 @@ void dynamic_array_grow(_Any_Dynamic_Array *arr, Arena *a, u32 item_size) {
   (arr)->data[(arr)->len++] = (item); \
 })
 
+
+void _dynamic_array_pop(_Any_Dynamic_Array *arr, void *dst, u32 item_size) {
+  memcpy(dst, arr->data, item_size);
+  memcpy(arr->data, arr->data + ((arr->len * item_size) - (1 * item_size)), item_size);
+  arr->len -= 1;
+}
+#define dynamic_array_pop(arr, item) _dynamic_array_pop((_Any_Dynamic_Array *) arr, (void *) item, sizeof(item))
+
 void _dynamic_array_clear(_Any_Dynamic_Array *arr) {
   arr->len = 0;
 }
@@ -326,6 +344,10 @@ struct { \
 }
 
 typedef Make_Slice_Type(void) _Any_Slice;
+
+// NOTE: somente necessário se for usar DG_REINTERPRET_CAST
+DG_STATIC_ASSERT(DG_OFFSET_OF(_Any_Slice, data) == DG_OFFSET_OF(_Any_Dynamic_Array, data));
+DG_STATIC_ASSERT(DG_OFFSET_OF(_Any_Slice, len ) == DG_OFFSET_OF(_Any_Dynamic_Array, len ));
 
 #define make_slice(arena, slice, len) dg_make_slice(arena, (_Any_Slice *)slice, len, sizeof(*(slice)->data))
 
@@ -343,6 +365,40 @@ void dg_make_slice(Arena *a, _Any_Slice *slice, u64 len, u64 item_size){
 }
 
 #define SLICE_AT(slice, idx) (slice.data[idx < 0 ? slice.len + idx : idx])
+
+struct dg_dag;
+
+typedef struct {
+  f32 weight;
+  struct dg_dag *child;
+} DAG_Connection;
+
+typedef struct dg_dag { // TODO: mudar para a parte de definições
+  Make_Dynamic_Array_Type(DAG_Connection) children;
+  u32 layer; // NOTE: olhar se ajuda na organização topologica
+  f32 value;
+  b32 visited;
+} DG_DAG;
+
+#define DAG_CHILD_AT(node, idx) SLICE_AT((node).children, idx).child
+
+void dag_connect_child(Arena *a, DG_DAG *parent, DG_DAG *child, f32 connection_weight) {
+  child->layer = MAX(parent->layer + 1, child->layer);
+  DAG_Connection connection = { .child = child, .weight = connection_weight };
+  dynamic_array_push(&parent->children, connection, a);
+}
+
+DG_DAG *dag_add_child(Arena *a, DG_DAG *parent, f32 value, f32 connection_weight) {
+  DG_DAG *child = arena_alloc(a, sizeof(*child));
+  child->value = value;
+
+  if (parent) {
+    dag_connect_child(a, parent, child, connection_weight);
+  }
+
+  return child;
+}
+
 #endif // }}} defined(DG_CONTAINER_IMPLEMENTATION)
 // }}}
 

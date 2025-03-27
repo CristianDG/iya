@@ -9,7 +9,14 @@
   <body>
     <h1>oi</h1>
     <script type="module" async>
-      window.wasmModule = (await runWasm("out.wasm", { "env": { console_log: console.log, console_error:console.error } })).instance.exports
+      window.wasmModule = (await runWasm("out.wasm",
+        {
+          "env": {
+            console_log: console.log,
+            console_error: console.error,
+            console_log_number: console.log,
+          }
+        })).instance.exports
 
       function printImageBase64(data, width, height) {
         const style = [

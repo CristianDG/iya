@@ -13,6 +13,7 @@
 
 extern void console_error(char *str);
 extern void console_log(char *str);
+extern void console_log_number(u64 number);
 
 #define STB_SPRINTF_IMPLEMENTATION
 #include <stb_sprintf.h>
@@ -57,12 +58,15 @@ void *memcpy(void *dest, const void *src, usize size) {
 // TODO: include platform independent file
 
 // implementation from https://surma.dev/things/c-to-webassembly/
+extern u8 __heap_end;
 extern u8 __heap_base;
+u8 *max_memory = &__heap_end;
 u8 *bump_pointer = &__heap_base;
 
 void* malloc(usize n) {
   u8 *r = bump_pointer;
   bump_pointer += n;
+  DG_ASSERT(bump_pointer <= max_memory);
   return r;
 }
 
