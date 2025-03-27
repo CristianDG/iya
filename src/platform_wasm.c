@@ -1,3 +1,13 @@
+/*
+ * TODO:
+ * - drawing functions
+ *   - NOTE: olhar olive.c
+ *   - draw circle
+ *   - draw square
+ *   - draw line
+ *
+ * */
+
 #define CDG_MATH_H
 #include "cdg_base.c"
 
