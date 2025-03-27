@@ -274,8 +274,16 @@ struct { \
 
 typedef Make_Dynamic_Array_type(void) _Any_Dynamic_Array;
 
+void _make_dynamic_array(_Any_Dynamic_Array *arr, u32 capacity, Arena *a, u32 item_size);
+#define make_dynamic_array(arr, arena, capacity) _make_dynamic_array((_Any_Dynamic_Array *) arr, capacity, arena, sizeof((arr)->data))
+
 #endif // }}} CDG_CONTAINER_C
 #if defined(DG_CONTAINER_IMPLEMENTATION) // {{{
+
+void _make_dynamic_array(_Any_Dynamic_Array *arr, u32 capacity, Arena *a, u32 item_size) {
+  DG_ASSERT(false);
+}
+
 void dynamic_array_grow(_Any_Dynamic_Array *arr, Arena *a, u32 item_size) {
   _Any_Dynamic_Array replica = {0};
   DG_MEMCPY(&replica, arr, sizeof(replica));
