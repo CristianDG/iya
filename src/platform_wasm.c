@@ -17,8 +17,21 @@ void *memset(void *ptr, u8 val, usize size) {
   return ptr;
 }
 
+void *memcpy(void *dest, const void *src, usize size) {
+  void *ptr = dest;
+
+  u8 *dest_cpy = dest;
+  const u8 *src_cpy = src;
+
+  for (usize i = 0; i < size; ++i) {
+    *dest_cpy++ = *src_cpy++;
+  }
+
+  return ptr;
+}
+
 #define DG_MEMSET(ptr, val, size) memset(ptr, val, size)
-#define DG_MEMCPY(dst, src, size) 0 /*stub*/
+#define DG_MEMCPY(dst, src, size) memcpy(dst, src, size)
 
 #define DG_LOG_IMPL(fn, buf_identifier, args...) DG_STATEMENT({ \
   char buf_identifier[KILOBYTE] = {}; \
