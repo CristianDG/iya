@@ -11,36 +11,34 @@
 
 /* TODO:
  * - context cracking
- * - assert + debugger trap
+ * - debugger trap
  */
 
 #define DG_STATEMENT(x) do { x } while (0)
 
 #define ARRAY_LEN(arr) (sizeof(arr) / sizeof((arr)[0]))
+#define ABS(x) ((x) > 0 ? (x) : -(x))
 #define MAX(x, y) ((x) >= (y) ? (x) : (y))
 #define MIN(x, y) ((x) <= (y) ? (x) : (y))
 #define CLAMP_TOP MIN
 #define CLAMP_BOTTOM MAX
+#define CLAMP(val, min, max) (val < min ? min : (val > max ? max : val))
 
-// TODO: olhar se funciona
 #define STR(x) #x
 #define GLUE(a,b) a##b
-
-// #define DG_NARGS(...) ((int)(sizeof((int[]){ __VA_ARGS__ })/sizeof(int)))
 
 #define ELEVENTH_ARGUMENT(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, ...) a11
 #define DG_NARGS(...) ELEVENTH_ARGUMENT(dummy, ## __VA_ARGS__, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
 
 
-#if !defined(DG_STATIC_ASSERT)
+#if !defined(DG_STATIC_ASSERT) // {{{
 
 #define DG_STATIC_ASSERT(args...) DG_STATIC_ASSERT_IMPL(DG_NARGS(args), args)
 #define DG_STATIC_ASSERT_IMPL(n, args...) GLUE(DG_STATIC_ASSERT_, n)(args)
 #define DG_STATIC_ASSERT_1(expr) _Static_assert(expr, "")
 #define DG_STATIC_ASSERT_2(expr, msg) _Static_assert(expr, msg)
 
-#endif
-
+#endif // }}} DG_STATIC_ASSERT
 
 #define is_power_of_two(x) ((x != 0) && ((x & (x - 1)) == 0))
 
@@ -76,14 +74,20 @@ typedef u32 b32;
 #define DG_DYNAMIC_ACCESS(type, offset) \
   (((void *)(type))+offset)
 
-#ifndef DG_CRASH
+#define DG_SWAP(type, a, b) DG_STATEMENT({ \
+  type _tmp = *(a); \
+  *(a) = *(b); \
+  *(b) = _tmp; \
+})
 
+
+#ifndef DG_CRASH // {{{
 #if defined(DG_PLATFORM_WASM)
 #define DG_CRASH() __builtin_trap()
 #else
 #define DG_CRASH() (*((volatile int *)0) = 69)
 #endif
-#endif // DG_CRASH
+#endif // }}} DG_CRASH
 
 #if !defined(DG_ASSERT_EXPR) // {{{
 // NOTE: esse assert funciona como expressão: bool assert(bool)
@@ -141,7 +145,7 @@ typedef struct {
 typedef struct {
   Arena *arena;
   u32 cursor;
-} Temporary_Arena_Memory;
+} Temp_Arena_Memory;
 
 
 Arena arena_init_buffer(u8 *data, size_t size);
@@ -150,18 +154,25 @@ uintptr_t align_forward(uintptr_t ptr, size_t alignment);
 void *_arena_alloc(Arena *arena, size_t size, size_t alignment);
 void *_tracking_arena_alloc(Arena *arena, size_t size, size_t alignment, char *file, i32 line);
 
-Temporary_Arena_Memory temp_arena_memory_begin(Arena *a);
-void temp_arena_memory_end(Temporary_Arena_Memory *tmp_mem);
+Temp_Arena_Memory temp_arena_memory_begin(Arena *a);
+void temp_arena_memory_end(Temp_Arena_Memory *tmp_mem);
 
 void arena_clear(Arena *arena);
 
-#if defined(DG_ARENA_DEBUG)
+#if defined(DG_ARENA_DEBUG) // {{{
 #define arena_alloc(arena, size) _tracking_arena_alloc(arena, size, DEFAULT_ALIGNMENT, __FILE__, __LINE__)
 #define arena_alloc_pass_loc(arena, size, file, line) _tracking_arena_alloc(arena, size, DEFAULT_ALIGNMENT, file, line)
+// }}}
 #else
+// {{{
 #define arena_alloc(arena, size) _arena_alloc(arena, size, DEFAULT_ALIGNMENT)
 #define arena_alloc_pass_loc(arena, size, file, line) _arena_alloc(arena, size, DEFAULT_ALIGNMENT)
-#endif //DG_ARENA_DEBUG
+#endif // }}} DG_ARENA_DEBUG
+
+#define TempGuard(arena) \
+  for (Temp_Arena_Memory __t_a_m = temp_arena_memory_begin(arena) \
+  ; __t_a_m.arena \
+  ; temp_arena_memory_end(&__t_a_m))
 
 #endif // CDG_ALLOC_C }}}
 #if defined(DG_ALLOC_IMPLEMENTATION) // {{{
@@ -221,10 +232,8 @@ void *_arena_alloc(Arena *arena, size_t size, size_t alignment)
   uintptr_t offset = align_forward(curr_ptr, alignment);
   offset -= (uintptr_t)arena->data;
 
-  // acredito que um if é melhor que um assert aqui
-  if (offset + size > arena->size) {
-    return 0;
-  }
+  // NOTE: olhar se é melhor um if ou um assert aqui
+  DG_ASSERT(offset + size < arena->size);
 
   void *ptr = (void *)arena->data + offset;
   arena->cursor = offset + size;
@@ -242,15 +251,15 @@ void *_tracking_arena_alloc(Arena *arena, size_t size, size_t alignment, char *f
   return ptr;
 }
 
-Temporary_Arena_Memory temp_arena_memory_begin(Arena *a)
+Temp_Arena_Memory temp_arena_memory_begin(Arena *a)
 {
-  return (Temporary_Arena_Memory) {
+  return (Temp_Arena_Memory) {
     .arena = a,
     .cursor = a->cursor,
   };
 }
 
-void temp_arena_memory_end(Temporary_Arena_Memory *tmp_mem)
+void temp_arena_memory_end(Temp_Arena_Memory *tmp_mem)
 {
   tmp_mem->arena->cursor = tmp_mem->cursor;
   tmp_mem->arena = 0;
@@ -364,7 +373,9 @@ void dg_make_slice(Arena *a, _Any_Slice *slice, u64 len, u64 item_size){
   *slice = res;
 }
 
-#define SLICE_AT(slice, idx) (slice.data[idx < 0 ? slice.len + idx : idx])
+#define SLICE_FOREACH_IDX(idx, slice) for (usize idx = 0; idx < (slice).len; ++idx )
+#define SLICE_AT(slice, idx) (slice).data[idx]
+#define SLICE_AT_WRAP(slice, idx) (slice).data[idx < 0 ? slice.len + idx : idx]
 
 struct dg_dag;
 
@@ -377,6 +388,7 @@ typedef struct dg_dag { // TODO: mudar para a parte de definições
   Make_Dynamic_Array_Type(DAG_Connection) children;
   u32 layer; // NOTE: olhar se ajuda na organização topologica
   f32 value;
+  f32 bias;
   b32 visited;
 } DG_DAG;
 
@@ -388,7 +400,7 @@ void dag_connect_child(Arena *a, DG_DAG *parent, DG_DAG *child, f32 connection_w
   dynamic_array_push(&parent->children, connection, a);
 }
 
-DG_DAG *dag_add_child(Arena *a, DG_DAG *parent, f32 value, f32 connection_weight) {
+DG_DAG *dag_add_child(Arena *a, DG_DAG *parent, f32 value, f32 bias, f32 connection_weight) {
   DG_DAG *child = arena_alloc(a, sizeof(*child));
   child->value = value;
 
@@ -400,6 +412,19 @@ DG_DAG *dag_add_child(Arena *a, DG_DAG *parent, f32 value, f32 connection_weight
 }
 
 #endif // }}} defined(DG_CONTAINER_IMPLEMENTATION)
+// }}}
+
+// algorithms {{{
+#ifndef DG_ALGORITHM_H // {{{
+#define DG_ALGORITHM_H
+
+// TODO: quicksort
+
+#endif // }}} DG_ALGORITHM_H
+#if defined(DG_ALGORITHM_IMPLEMENTATION) // {{{
+
+
+#endif // }}} DG_ALGORITHM_H
 // }}}
 
 // Matrix types and operations {{{
@@ -511,3 +536,104 @@ f32 randf(){
 #endif // CDG_MATH_H
 // }}}
 
+// software renderer {{{
+#ifndef CDG_SOFTWARE_RENDERER_H // {{{
+#define CDG_SOFTWARE_RENDERER_H
+
+typedef struct {
+  f32 r, g, b, a;
+} DG_Color;
+
+typedef struct {
+  u32 *pixels;
+  usize width;
+  usize height;
+} DG_Canvas;
+
+// trocar para i32...????
+typedef struct {
+  u32 x1, y1;
+  u32 x2, y2;
+} DG_Safe_Rect;
+
+#define DG_GET_PIXEL(canvas, x, y) (canvas).pixels[(y) * (canvas).width + (x)]
+
+static inline u32 color_to_u32(DG_Color color){
+  u32 a = (u8)(color.a * 255) << (8 * 3);
+  u32 r = (u8)(color.r * 255) << (8 * 2);
+  u32 g = (u8)(color.g * 255) << (8 * 1);
+  u32 b = (u8)(color.b * 255) << (8 * 0);
+
+  return (a | r | g | b);
+}
+
+static inline DG_Color u32_to_color(u32 val) {
+  DG_Color result = { 0 };
+
+  u8 a = val >> (8 * 3);
+  u8 r = val >> (8 * 2);
+  u8 g = val >> (8 * 1);
+  u8 b = val >> (8 * 0);
+
+  result.r = r / 255.f;
+  result.g = g / 255.f;
+  result.b = b / 255.f;
+  result.a = a / 255.f;
+
+  return result;
+}
+
+#endif // }}} CDG_SOFTWARE_RENDERER_H
+#if defined(DG_SOFTWARE_RENDERER_IMPLEMENTATION) // {{{
+
+void dg_fill_canvas(DG_Canvas canvas, DG_Color color) {
+
+  for (u32 y = 0; y <= canvas.height; ++y) {
+    for (u32 x = 0; x <= canvas.width; ++x) {
+      DG_GET_PIXEL(canvas, x, y) = color_to_u32(color);
+    }
+  }
+
+}
+
+DG_Safe_Rect
+dg_normalize_rect(
+  i32 x, i32 y,
+  i32 width, i32 height,
+  u32 canvas_width, u32 canvas_height
+) {
+  DG_Safe_Rect result = { 0 };
+
+  result.x1 = CLAMP(x, 0, canvas_width-1);
+  result.x2 = CLAMP(x + width, 0, canvas_width-1);
+
+  result.y1 = CLAMP(y, 0, canvas_height-1);
+  result.y2 = CLAMP(y + height, 0, canvas_height-1);
+
+  return result;
+}
+
+void dg_draw_circle(DG_Canvas canvas, i32 cx, i32 cy, i32 r, DG_Color color) {
+  DG_ASSERT(r > 0);
+
+  DG_Safe_Rect rect = dg_normalize_rect(
+    cx - r, cy - r, r * 2, r * 2,
+    canvas.width, canvas.height
+  );
+
+  for (u32 y = rect.y1; y <= rect.y2; ++y) {
+    for (u32 x = rect.x1; x <= rect.x2; ++x) {
+
+      u32 square_distance_x = (x - cx) * (x - cx);
+      u32 square_distance_y = (y - cy) * (y - cy);
+      if ((square_distance_x + square_distance_y) <= (r * r)) {
+        DG_GET_PIXEL(canvas, x, y) = color_to_u32(color);
+      }
+
+    }
+  }
+
+}
+
+#endif // }}} DG_ALGORITHM_H
+// }}}

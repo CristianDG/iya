@@ -13,7 +13,8 @@
 
 extern void console_error(char *str);
 extern void console_log(char *str);
-extern void console_log_number(u64 number);
+extern void console_log_f64(f64 number);
+#define console_log_u64(number) console_log_f64((f64) number)
 
 #define STB_SPRINTF_IMPLEMENTATION
 #include <stb_sprintf.h>
@@ -55,7 +56,12 @@ void *memcpy(void *dest, const void *src, usize size) {
 
 #include "cdg_base.c"
 
-// TODO: include platform independent file
+extern void console_log_canvas(u32 width, u32 height, void *pixels);
+
+extern f64 tanh(f64 val);
+f32 ftanh(f32 val) {
+  return (f32)tanh((f64) val);
+}
 
 // implementation from https://surma.dev/things/c-to-webassembly/
 extern u8 __heap_end;
@@ -73,6 +79,7 @@ void* malloc(usize n) {
 void free(void* p) {
   // lol
 }
+
 
 #include "iya.c"
 
