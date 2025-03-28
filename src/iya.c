@@ -12,15 +12,16 @@ static u32 _scratch_idx = 0;
 Arena scratch_arena[SCRATCH_SIZE] = {};
 #define GetScratch() &scratch_arena[_scratch_idx++ % SCRATCH_SIZE]
 
-#define TmpGuard(a) \
-  for (Temporary_Arena_Memory __t_a_m = temp_arena_memory_begin(a) \
+
+#define TempGuard(arena) \
+  for (Temporary_Arena_Memory __t_a_m = temp_arena_memory_begin(arena) \
   ; __t_a_m.arena \
   ; temp_arena_memory_end(&__t_a_m))
 
-// NOTE: define a arena acima do escopo necessário
 #define WithScratch(name) \
-  Arena *name = GetScratch(); \
-  TmpGuard(name)
+  for (Temporary_Arena_Memory name = temp_arena_memory_begin(GetScratch()) \
+  ; name.arena \
+  ; temp_arena_memory_end(&name))
 
 typedef struct {
   // TODO: backing arena
@@ -61,10 +62,10 @@ void traverse_model(ML_Model *model, traverse_model_fn *fn)
   WithScratch(scratch)
   {
     Make_Dynamic_Array_Type(DG_DAG *) nodes;
-    make_dynamic_array(&nodes, scratch, 32);
+    make_dynamic_array(&nodes, scratch.arena, 32);
 
     Make_Dynamic_Array_Type(DG_DAG *) nodes_to_traverse;
-    make_dynamic_array(&nodes_to_traverse, scratch, 32);
+    make_dynamic_array(&nodes_to_traverse, scratch.arena, 32);
 
     DG_DAG *node = &model->nodes;
     do {
@@ -72,8 +73,8 @@ void traverse_model(ML_Model *model, traverse_model_fn *fn)
         DG_DAG *child = SLICE_AT(node->children, i).child;
         if (!child->visited) {
           child->visited = true;
-          dynamic_array_push(&nodes_to_traverse, child, scratch);
-          dynamic_array_push(&nodes, child, scratch);
+          dynamic_array_push(&nodes_to_traverse, child, scratch.arena);
+          dynamic_array_push(&nodes, child, scratch.arena);
         }
       }
       dynamic_array_pop(&nodes_to_traverse, &node);
@@ -105,7 +106,9 @@ int main(void)
     scratch_arena[1] = arena_init_buffer(malloc(size), size);
   }
 
-  WithScratch(scratch) {
+  WithScratch(guard) {
+    Arena *scratch = guard.arena;
+
     ML_Model *model = init_model(scratch);
     traverse_model(model, traverse_print);
   }
