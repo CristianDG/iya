@@ -377,6 +377,52 @@ void dg_make_slice(Arena *a, _Any_Slice *slice, u64 len, u64 item_size){
 #define SLICE_AT(slice, idx) (slice).data[idx]
 #define SLICE_AT_WRAP(slice, idx) (slice).data[idx < 0 ? slice.len + idx : idx]
 
+/*
+FIXME:
+fazer a implementação funcionar diretamente dentro de um for
+Eu acretido que da pra fazer isso se passar o slice em `ITERATOR_ADVANCE`
+
+exemplo:
+
+```c
+for (
+  Make_Iterator_Type(Draw_Connection_Command) cmd_iter = {};
+  !ITERATOR_TERMINATED(cmd_iter);
+  ITERATOR_ADVANCE(&cmd_iter, draw_connection_commands);
+) {
+  Draw_Connection_Command cmd = cmd_iter.item;
+  // dg_draw_line
+}
+```
+
+*/
+// iterator implementation {{{
+#define Make_Iterator_Type(type) \
+struct { \
+  type *data; \
+  i32 len; \
+  u32 next_idx; \
+  type item; \
+}
+typedef Make_Iterator_Type(u8) _Any_Iterator;
+
+#define ITERATOR_TERMINATED(iterator) ((iterator).next_idx > (iterator).len)
+
+static inline void _advance(_Any_Iterator *iterator, u8 item_size) {
+  DG_MEMCPY(&iterator->item, (iterator->data + (iterator->next_idx * item_size)), item_size);
+  iterator->next_idx++;
+}
+
+#define ITERATOR_ADVANCE(iterator) _advance((_Any_Iterator *) iterator, sizeof((iterator)->item))
+
+#define make_iterator(name, slice) DG_STATEMENT({ \
+  name.data = (slice).data; \
+  name.len  = (slice).len; \
+  ITERATOR_ADVANCE(&name); \
+})
+// }}}
+
+
 struct dg_dag;
 
 typedef struct {
