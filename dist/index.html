@@ -39,9 +39,8 @@
       window.wasmModule = (await runWasm("out.wasm",
         {
           "env": (wasmInterface) => ({
-            console_log: console.log,
-            console_error: console.error,
-            console_log_f64: console.log,
+            console_log: str_ptr => console.log(wasmInterface.loadCstring(str_ptr)),
+            console_error: str_ptr => console.error(wasmInterface.loadCstring(str_ptr)),
             tanh: Math.tanh,
             console_log_canvas:  (width, height, pixels_ptr) => {
 
@@ -50,7 +49,7 @@
               canvas.width = width;
               canvas.height = height;
 
-              const image = new ImageData(new Uint8ClampedArray(wasmInterface.mem.buffer, pixels_ptr, width*height*4), width);
+              const image = new ImageData(new Uint8ClampedArray(wasmInterface.memory.buffer, pixels_ptr, width*height*4), width);
 
               ctx.putImageData(image, 0, 0);
 

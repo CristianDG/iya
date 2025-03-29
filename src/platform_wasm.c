@@ -13,8 +13,6 @@
 
 extern void console_error(char *str);
 extern void console_log(char *str);
-extern void console_log_f64(f64 number);
-#define console_log_u64(number) console_log_f64((f64) number)
 
 #define STB_SPRINTF_IMPLEMENTATION
 #include <stb_sprintf.h>
