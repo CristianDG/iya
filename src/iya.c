@@ -139,13 +139,12 @@ void draw_dag(DG_Canvas canvas, Node_Slice nodes)
   } Node_Location;
   typedef Make_Dynamic_Array_Type(Node_Location) Layer;
 
-  Make_Dynamic_Array_Type(Layer) layers;
+  Make_Dynamic_Array_Type(Layer) layers = {};
   WithScratch(scratch)
   {
 
-    u32 current_layer_number  = 1;
+    u32 current_layer_number  = 0;
     u32 current_node_location = 0;
-    Layer current_layer = { };
 
     SLICE_FOREACH_IDX(i, nodes) {
       DG_DAG *node = SLICE_AT(nodes, i);
@@ -154,28 +153,31 @@ void draw_dag(DG_Canvas canvas, Node_Slice nodes)
         continue;
       }
 
-      if (node->layer == current_layer_number) {
-        dynamic_array_push(&current_layer, ((Node_Location){ .node=node, .pos=current_node_location }), scratch.arena);
-        current_node_location += 1;
-      } else {
-        dynamic_array_push(&layers, current_layer, scratch.arena);
-        current_layer = (Layer){ };
+      if (node->layer != current_layer_number) {
+        dynamic_array_push(&layers, ((Layer){ }), scratch.arena);
+        current_node_location = 0;
         current_layer_number = node->layer;
       }
+
+      if (node->layer == current_layer_number) {
+        dynamic_array_push(&SLICE_AT_WRAP(layers, -1), ((Node_Location){ .node=node, .pos=current_node_location }), scratch.arena);
+        current_node_location += 1;
+      }
+
 
     }
 
     typedef struct {
-      Node_Location node;
+      Node_Location loc;
     } Draw_Node_Command;
 
     typedef struct {
-      Node_Location node, child;
+      Node_Location node_loc, child_loc;
     } Draw_Connection_Command;
 
-    Make_Dynamic_Array_Type(Draw_Node_Command) draw_node_commands;
+    Make_Dynamic_Array_Type(Draw_Node_Command) draw_node_commands = {};
     make_dynamic_array(&draw_node_commands, scratch.arena, nodes.len);
-    Make_Dynamic_Array_Type(Draw_Connection_Command) draw_connection_commands;
+    Make_Dynamic_Array_Type(Draw_Connection_Command) draw_connection_commands = {};
 
     for (usize node_idx = 0; node_idx < nodes.len; ++node_idx) {
       DG_DAG *node = SLICE_AT(nodes, node_idx);
@@ -191,6 +193,7 @@ void draw_dag(DG_Canvas canvas, Node_Slice nodes)
           break;
         }
       }
+      DG_ASSERT(node_loc.node != 0);
 
       dynamic_array_push(&draw_node_commands, ((Draw_Node_Command) { node_loc }), scratch.arena);
 
@@ -199,42 +202,79 @@ void draw_dag(DG_Canvas canvas, Node_Slice nodes)
         SLICE_FOREACH_IDX(child_idx, node->children) {
           DAG_Connection connection = SLICE_AT(node->children, child_idx);
           DG_DAG *child = connection.child;
+          u32 child_layer_idx = child->layer - 1;
 
           Node_Location child_loc = {};
-          SLICE_FOREACH_IDX(layer_node_idx, SLICE_AT(layers, layer_idx)) {
-            Node_Location loc = SLICE_AT(SLICE_AT(layers, layer_idx), layer_node_idx);
+          SLICE_FOREACH_IDX(layer_node_idx, SLICE_AT(layers, child_layer_idx)) {
+            Node_Location loc = SLICE_AT(SLICE_AT(layers, child_layer_idx), layer_node_idx);
 
             if (loc.node == child) {
               child_loc = loc;
               break;
             }
           }
+          DG_ASSERT(child_loc.node != 0);
 
-          dynamic_array_push(&draw_connection_commands, ((Draw_Connection_Command) { .node=node_loc, .child=child_loc }), scratch.arena);
+          dynamic_array_push(&draw_connection_commands, ((Draw_Connection_Command) { .node_loc=node_loc, .child_loc=child_loc }), scratch.arena);
         }
 
       }
 
     }
 
-
-    // TODO: draw the connections
-    DG_ASSERT(!"not implemented");
-
-    Make_Iterator_Type(Draw_Connection_Command) cmd_iter = {};
-    make_iterator(cmd_iter, draw_connection_commands);
-    for (;!ITERATOR_TERMINATED(cmd_iter) ; ITERATOR_ADVANCE(&cmd_iter))
     {
-      Draw_Connection_Command cmd = cmd_iter.item;
-      // dg_draw_line
-    }
+      // TODO: draw the connections
 
-    // TODO: draw the nodes
-    SLICE_FOREACH_IDX(cmd_idx, draw_node_commands) {
-      Draw_Node_Command cmd = draw_node_commands.data[cmd_idx];
-      // dg_draw_circle
-    }
+      u32 padding_y = 10;
+      u32 padding_x = 10;
 
+      // u32 layer_spacing = 0;
+      // u32 node_spacing = 0;
+
+      Make_Iterator_Type(Draw_Connection_Command) cmd_iter = {};
+      make_iterator(cmd_iter, draw_connection_commands);
+      for (;!ITERATOR_TERMINATED(cmd_iter) ; ITERATOR_ADVANCE(&cmd_iter))
+      {
+        Draw_Connection_Command cmd = cmd_iter.item;
+        // dg_draw_line
+      }
+
+      // draw the nodes
+      SLICE_FOREACH_IDX(cmd_idx, draw_node_commands) {
+        Draw_Node_Command cmd = draw_node_commands.data[cmd_idx];
+        u32 node_radius = 10;
+        u32 node_padding_y = padding_y + padding_y;
+        u32 node_padding_x = padding_x + padding_x;
+
+        u32 layer_nodes_number = SLICE_AT(layers, cmd.loc.node->layer-1).len;
+
+        u32 node_x = 0;
+        u32 node_y = 0;
+
+        u32 horizontal_space_available = canvas.width - (node_padding_x * 2);
+        u32 vertical_space_available = canvas.height  - (node_padding_y * 2);
+
+        // x pos
+        if (layers.len > 1) {
+          u32 horizontal_node_spacing = horizontal_space_available / (layers.len - 1);
+          node_x = (horizontal_node_spacing * (cmd.loc.node->layer - 1)) + node_padding_y;
+        } else {
+          node_x = (horizontal_space_available / 2) + node_padding_y;
+        }
+
+        // y pos
+        if (layer_nodes_number > 1) {
+          u32 vertical_node_spacing = vertical_space_available / (layer_nodes_number - 1);
+          node_y = (vertical_node_spacing * cmd.loc.pos) + node_padding_y;
+        } else {
+          node_y = (vertical_space_available / 2) + node_padding_y;
+        }
+
+        dg_draw_circle(canvas, node_x, node_y, node_radius, (DG_Color){1, 1, 1, 1});
+      }
+      console_log_canvas(canvas.width, canvas.height, canvas.pixels);
+      DG_ASSERT(!"not implemented");
+    }
   }
 }
 
@@ -288,9 +328,7 @@ int main(void)
       }
 
       { // debug printing
-        DG_LOG("%f", node->value);
-        DG_LOG("%d", node->layer);
-        DG_LOG("%d", 420);
+        // DG_LOG("layer: %d value: %f", node->layer, node->value);
       }
 
     }
@@ -300,9 +338,9 @@ int main(void)
     void *canvas_memory = arena_alloc(&permanent_arena, sizeof(u32) * canvas_width * canvas_height);
     DG_Canvas canvas = {.pixels = canvas_memory, .width = canvas_width, .height = canvas_height };
     dg_fill_canvas(canvas, u32_to_color(0xFF000000));
-    dg_draw_circle(canvas, 20, 60, 20, (DG_Color){ .2, .4, .6, 1 });
-    dg_draw_circle(canvas, 10, 20, 20, (DG_Color){ .2, .4, .6, 1 });
-
+    // dg_draw_circle(canvas, 20, 60, 20, (DG_Color){ .2, .4, .6, 1 });
+    // dg_draw_circle(canvas, 10, 20, 20, (DG_Color){ .2, .4, .6, 1 });
+    draw_dag(canvas, dag_nodes);
     console_log_canvas(canvas.width, canvas.height, canvas.pixels);
 
   }
