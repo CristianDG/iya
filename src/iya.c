@@ -130,6 +130,114 @@ Node_Slice dag_sort_nodes(Arena *a, DG_DAG *dag)
 }
 
 
+void draw_dag(DG_Canvas canvas, Node_Slice nodes)
+{
+
+  typedef struct {
+    DG_DAG *node;
+    u32 pos;
+  } Node_Location;
+  typedef Make_Dynamic_Array_Type(Node_Location) Layer;
+
+  Make_Dynamic_Array_Type(Layer) layers;
+  WithScratch(scratch)
+  {
+
+    u32 current_layer_number  = 1;
+    u32 current_node_location = 0;
+    Layer current_layer = { };
+
+    SLICE_FOREACH_IDX(i, nodes) {
+      DG_DAG *node = SLICE_AT(nodes, i);
+
+      if (node->layer == 0) {
+        continue;
+      }
+
+      if (node->layer == current_layer_number) {
+        dynamic_array_push(&current_layer, ((Node_Location){ .node=node, .pos=current_node_location }), scratch.arena);
+        current_node_location += 1;
+      } else {
+        dynamic_array_push(&layers, current_layer, scratch.arena);
+        current_layer = (Layer){ };
+        current_layer_number = node->layer;
+      }
+
+    }
+
+    typedef struct {
+      Node_Location node;
+    } Draw_Node_Command;
+
+    typedef struct {
+      Node_Location node, child;
+    } Draw_Connection_Command;
+
+    Make_Dynamic_Array_Type(Draw_Node_Command) draw_node_commands;
+    make_dynamic_array(&draw_node_commands, scratch.arena, nodes.len);
+    Make_Dynamic_Array_Type(Draw_Connection_Command) draw_connection_commands;
+
+    for (usize node_idx = 0; node_idx < nodes.len; ++node_idx) {
+      DG_DAG *node = SLICE_AT(nodes, node_idx);
+
+      u32 layer_idx = node->layer - 1;
+
+      Node_Location node_loc = {};
+      SLICE_FOREACH_IDX(layer_node_idx, SLICE_AT(layers, layer_idx)) {
+        Node_Location loc = SLICE_AT(SLICE_AT(layers, layer_idx), layer_node_idx);
+
+        if (loc.node == node) {
+          node_loc = loc;
+          break;
+        }
+      }
+
+      dynamic_array_push(&draw_node_commands, ((Draw_Node_Command) { node_loc }), scratch.arena);
+
+      if (node->children.len > 0) {
+
+        SLICE_FOREACH_IDX(child_idx, node->children) {
+          DAG_Connection connection = SLICE_AT(node->children, child_idx);
+          DG_DAG *child = connection.child;
+
+          Node_Location child_loc = {};
+          SLICE_FOREACH_IDX(layer_node_idx, SLICE_AT(layers, layer_idx)) {
+            Node_Location loc = SLICE_AT(SLICE_AT(layers, layer_idx), layer_node_idx);
+
+            if (loc.node == child) {
+              child_loc = loc;
+              break;
+            }
+          }
+
+          dynamic_array_push(&draw_connection_commands, ((Draw_Connection_Command) { .node=node_loc, .child=child_loc }), scratch.arena);
+        }
+
+      }
+
+    }
+
+
+    // TODO: draw the connections
+    DG_ASSERT(!"not implemented");
+
+    Make_Iterator_Type(Draw_Connection_Command) cmd_iter = {};
+    make_iterator(cmd_iter, draw_connection_commands);
+    for (;!ITERATOR_TERMINATED(cmd_iter) ; ITERATOR_ADVANCE(&cmd_iter))
+    {
+      Draw_Connection_Command cmd = cmd_iter.item;
+      // dg_draw_line
+    }
+
+    // TODO: draw the nodes
+    SLICE_FOREACH_IDX(cmd_idx, draw_node_commands) {
+      Draw_Node_Command cmd = draw_node_commands.data[cmd_idx];
+      // dg_draw_circle
+    }
+
+  }
+}
+
 
 int main(void)
 {
@@ -179,11 +287,11 @@ int main(void)
         }
       }
 
-      // { // debug printing
-      //   console_log_f64(node->value);
-      //   console_log_f64(node->layer);
-      //   console_log_u64(420);
-      // }
+      { // debug printing
+        DG_LOG("%f", node->value);
+        DG_LOG("%d", node->layer);
+        DG_LOG("%d", 420);
+      }
 
     }
 
