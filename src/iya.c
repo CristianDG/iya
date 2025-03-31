@@ -139,7 +139,23 @@ void draw_dag(DG_Canvas canvas, Node_Slice nodes)
   } Node_Location;
   typedef Make_Dynamic_Array_Type(Node_Location) Layer;
 
-  Make_Dynamic_Array_Type(Layer) layers = {};
+  typedef struct {
+    Node_Location loc;
+  } Draw_Node_Command;
+
+  typedef struct {
+    Node_Location node_loc, child_loc;
+  } Draw_Connection_Command;
+
+  typedef struct {
+    Make_Dynamic_Array_Type(Draw_Node_Command) node_commands;
+    Make_Dynamic_Array_Type(Draw_Connection_Command) connection_commands;
+    // Make_Dynamic_Array_Type(u32) layer_nodes;
+    Make_Dynamic_Array_Type(Layer) layers;
+  } Draw_Dag_Command_Buffer;
+
+  Draw_Dag_Command_Buffer cmd_buffer = {};
+
   WithScratch(scratch)
   {
 
@@ -154,30 +170,20 @@ void draw_dag(DG_Canvas canvas, Node_Slice nodes)
       }
 
       if (node->layer != current_layer_number) {
-        dynamic_array_push(&layers, ((Layer){ }), scratch.arena);
+        dynamic_array_push(&cmd_buffer.layers, ((Layer){ }), scratch.arena);
         current_node_location = 0;
         current_layer_number = node->layer;
       }
 
       if (node->layer == current_layer_number) {
-        dynamic_array_push(&SLICE_AT_WRAP(layers, -1), ((Node_Location){ .node=node, .pos=current_node_location }), scratch.arena);
+        dynamic_array_push(&SLICE_AT_WRAP(cmd_buffer.layers, -1), ((Node_Location){ .node=node, .pos=current_node_location }), scratch.arena);
         current_node_location += 1;
       }
 
 
     }
 
-    typedef struct {
-      Node_Location loc;
-    } Draw_Node_Command;
-
-    typedef struct {
-      Node_Location node_loc, child_loc;
-    } Draw_Connection_Command;
-
-    Make_Dynamic_Array_Type(Draw_Node_Command) draw_node_commands = {};
-    make_dynamic_array(&draw_node_commands, scratch.arena, nodes.len);
-    Make_Dynamic_Array_Type(Draw_Connection_Command) draw_connection_commands = {};
+    make_dynamic_array(&cmd_buffer.node_commands, scratch.arena, nodes.len);
 
     for (usize node_idx = 0; node_idx < nodes.len; ++node_idx) {
       DG_DAG *node = SLICE_AT(nodes, node_idx);
@@ -185,8 +191,8 @@ void draw_dag(DG_Canvas canvas, Node_Slice nodes)
       u32 layer_idx = node->layer - 1;
 
       Node_Location node_loc = {};
-      SLICE_FOREACH_IDX(layer_node_idx, SLICE_AT(layers, layer_idx)) {
-        Node_Location loc = SLICE_AT(SLICE_AT(layers, layer_idx), layer_node_idx);
+      SLICE_FOREACH_IDX(layer_node_idx, SLICE_AT(cmd_buffer.layers, layer_idx)) {
+        Node_Location loc = SLICE_AT(SLICE_AT(cmd_buffer.layers, layer_idx), layer_node_idx);
 
         if (loc.node == node) {
           node_loc = loc;
@@ -195,7 +201,7 @@ void draw_dag(DG_Canvas canvas, Node_Slice nodes)
       }
       DG_ASSERT(node_loc.node != 0);
 
-      dynamic_array_push(&draw_node_commands, ((Draw_Node_Command) { node_loc }), scratch.arena);
+      dynamic_array_push(&cmd_buffer.node_commands, ((Draw_Node_Command) { node_loc }), scratch.arena);
 
       if (node->children.len > 0) {
 
@@ -205,8 +211,8 @@ void draw_dag(DG_Canvas canvas, Node_Slice nodes)
           u32 child_layer_idx = child->layer - 1;
 
           Node_Location child_loc = {};
-          SLICE_FOREACH_IDX(layer_node_idx, SLICE_AT(layers, child_layer_idx)) {
-            Node_Location loc = SLICE_AT(SLICE_AT(layers, child_layer_idx), layer_node_idx);
+          SLICE_FOREACH_IDX(layer_node_idx, SLICE_AT(cmd_buffer.layers, child_layer_idx)) {
+            Node_Location loc = SLICE_AT(SLICE_AT(cmd_buffer.layers, child_layer_idx), layer_node_idx);
 
             if (loc.node == child) {
               child_loc = loc;
@@ -215,7 +221,7 @@ void draw_dag(DG_Canvas canvas, Node_Slice nodes)
           }
           DG_ASSERT(child_loc.node != 0);
 
-          dynamic_array_push(&draw_connection_commands, ((Draw_Connection_Command) { .node_loc=node_loc, .child_loc=child_loc }), scratch.arena);
+          dynamic_array_push(&cmd_buffer.connection_commands, ((Draw_Connection_Command) { .node_loc=node_loc, .child_loc=child_loc }), scratch.arena);
         }
 
       }
@@ -223,7 +229,6 @@ void draw_dag(DG_Canvas canvas, Node_Slice nodes)
     }
 
     {
-      // TODO: draw the connections
 
       u32 padding_y = 10;
       u32 padding_x = 10;
@@ -231,22 +236,25 @@ void draw_dag(DG_Canvas canvas, Node_Slice nodes)
       // u32 layer_spacing = 0;
       // u32 node_spacing = 0;
 
+      // TODO: draw the connections
       Make_Iterator_Type(Draw_Connection_Command) cmd_iter = {};
-      make_iterator(cmd_iter, draw_connection_commands);
-      for (;!ITERATOR_TERMINATED(cmd_iter) ; ITERATOR_ADVANCE(&cmd_iter))
+      make_iterator(cmd_iter, cmd_buffer.connection_commands);
+      for (;!ITERATOR_TERMINATED(cmd_iter); ITERATOR_ADVANCE(&cmd_iter))
       {
         Draw_Connection_Command cmd = cmd_iter.item;
         // dg_draw_line
       }
 
       // draw the nodes
-      SLICE_FOREACH_IDX(cmd_idx, draw_node_commands) {
-        Draw_Node_Command cmd = draw_node_commands.data[cmd_idx];
+      for (usize cmd_idx = 0; cmd_idx < cmd_buffer.node_commands.len; ++cmd_idx){
+        Draw_Node_Command cmd = cmd_buffer.node_commands.data[cmd_idx];
         u32 node_radius = 10;
-        u32 node_padding_y = padding_y + padding_y;
-        u32 node_padding_x = padding_x + padding_x;
+        u32 node_padding_y = padding_y + node_radius;
+        u32 node_padding_x = padding_x + node_radius;
 
-        u32 layer_nodes_number = SLICE_AT(layers, cmd.loc.node->layer-1).len;
+        u32 layer_idx = cmd.loc.node->layer-1;
+        u32 layer_nodes_number = SLICE_AT(cmd_buffer.layers, layer_idx).len;
+        u32 layers_number = cmd_buffer.layers.len;
 
         u32 node_x = 0;
         u32 node_y = 0;
@@ -255,9 +263,9 @@ void draw_dag(DG_Canvas canvas, Node_Slice nodes)
         u32 vertical_space_available = canvas.height  - (node_padding_y * 2);
 
         // x pos
-        if (layers.len > 1) {
-          u32 horizontal_node_spacing = horizontal_space_available / (layers.len - 1);
-          node_x = (horizontal_node_spacing * (cmd.loc.node->layer - 1)) + node_padding_y;
+        if (cmd_buffer.layers.len > 1) {
+          u32 horizontal_node_spacing = horizontal_space_available / (layers_number - 1);
+          node_x = (horizontal_node_spacing * layer_idx) + node_padding_y;
         } else {
           node_x = (horizontal_space_available / 2) + node_padding_y;
         }
