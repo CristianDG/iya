@@ -660,6 +660,7 @@ dg_normalize_rect(
 }
 
 void dg_draw_circle(DG_Canvas canvas, i32 cx, i32 cy, i32 r, DG_Color color) {
+  DG_ASSERT(!"implementar uma função em `platform_wasm` pra usar a api do canvas");
   DG_ASSERT(r > 0);
 
   DG_Safe_Rect rect = dg_normalize_rect(
