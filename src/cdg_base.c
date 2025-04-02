@@ -660,7 +660,6 @@ dg_normalize_rect(
 }
 
 void dg_draw_circle(DG_Canvas canvas, i32 cx, i32 cy, i32 r, DG_Color color) {
-  DG_ASSERT(!"implementar uma função em `platform_wasm` pra usar a api do canvas");
   DG_ASSERT(r > 0);
 
   DG_Safe_Rect rect = dg_normalize_rect(
@@ -682,5 +681,26 @@ void dg_draw_circle(DG_Canvas canvas, i32 cx, i32 cy, i32 r, DG_Color color) {
 
 }
 
-#endif // }}} DG_ALGORITHM_H
+#endif // }}} DG_SOFTWARE_RENDERER_IMPLEMENTATION
+#if defined(DG_CANVAS_RENDERER_IMPLEMENTATION) // {{{
+
+DG_Canvas dg_create_canvas(u32 width, u32 height) {
+  canvas_set_dimensions(width, height);
+  return (DG_Canvas){ .width = width, .height = height };
+}
+
+void dg_fill_canvas(DG_Canvas canvas, DG_Color color){
+  canvas_draw_rect(0, 0, canvas.width, canvas.height, color_to_u32(color));
+}
+
+void dg_draw_circle(DG_Canvas canvas, i32 cx, i32 cy, i32 r, DG_Color color){
+  canvas_draw_circle(cx, cy, r, color_to_u32(color));
+}
+
+void dg_draw_line(DG_Canvas canvas, i32 cx, i32 cy, i32 r, DG_Color color){
+
+}
+
+#endif // }}} DG_CANVAS_RENDERER_IMPLEMENTATION
+
 // }}}

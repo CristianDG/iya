@@ -36,6 +36,8 @@
         img.src = src;
       }
 
+      const globalCanvas = document.createElement('CANVAS');
+
       window.wasmModule = (await runWasm("out.wasm",
         {
           "env": (wasmInterface) => ({
@@ -44,17 +46,30 @@
             tanh: Math.tanh,
             console_log_canvas:  (width, height, pixels_ptr) => {
 
-              let canvas = document.createElement('CANVAS');
-              let ctx = canvas.getContext('2d');
-              canvas.width = width;
-              canvas.height = height;
+              // let canvas = document.createElement('CANVAS');
+              // let ctx = globalCanvas.getContext('2d');
+              // globalCanvas.width = width;
+              // globalCanvas.height = height;
 
-              const image = new ImageData(new Uint8ClampedArray(wasmInterface.memory.buffer, pixels_ptr, width*height*4), width);
+              // const image = new ImageData(new Uint8ClampedArray(wasmInterface.memory.buffer, pixels_ptr, width*height*4), width);
+              // ctx.putImageData(image, 0, 0);
 
-              ctx.putImageData(image, 0, 0);
-
-              let dataURL = canvas.toDataURL();
+              let dataURL = globalCanvas.toDataURL();
               printImageBase64(dataURL, width, height)
+            },
+            canvas_set_dimensions: (width, height) => {
+              globalCanvas.width = width;
+              globalCanvas.height = height;
+            },
+            canvas_draw_rect: (x, y, width, height, color) => {
+              let ctx = globalCanvas.getContext('2d');
+              ctx.fillStyle = "#FFA500";
+              ctx.fillRect(x, y, width, height);
+            },
+            canvas_draw_circle: (cx, cy, r, color) => {
+              let ctx = globalCanvas.getContext('2d');
+              ctx.fillStyle = "#00A500";
+              ctx.fillRect(cx - (r / 2), cy - (r / 2), r, r);
             },
           })
         },

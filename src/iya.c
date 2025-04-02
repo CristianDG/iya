@@ -2,7 +2,8 @@
 #define DG_CONTAINER_IMPLEMENTATION
 #define DG_ALLOC_IMPLEMENTATION
 #define DG_MATRIX_IMPLEMENTATION
-#define DG_SOFTWARE_RENDERER_IMPLEMENTATION
+// #define DG_SOFTWARE_RENDERER_IMPLEMENTATION
+#define DG_CANVAS_RENDERER_IMPLEMENTATION
 #include "cdg_base.c"
 
 // NOTE: platform independent but no `iya` dependent {{{
@@ -344,7 +345,8 @@ int main(void)
     u32 canvas_width = 256;
     u32 canvas_height = 256;
     void *canvas_memory = arena_alloc(&permanent_arena, sizeof(u32) * canvas_width * canvas_height);
-    DG_Canvas canvas = {.pixels = canvas_memory, .width = canvas_width, .height = canvas_height };
+    // DG_Canvas canvas = {.pixels = canvas_memory, .width = canvas_width, .height = canvas_height };
+    DG_Canvas canvas = dg_create_canvas(canvas_width, canvas_height);
     dg_fill_canvas(canvas, u32_to_color(0xFF000000));
     // dg_draw_circle(canvas, 20, 60, 20, (DG_Color){ .2, .4, .6, 1 });
     // dg_draw_circle(canvas, 10, 20, 20, (DG_Color){ .2, .4, .6, 1 });
