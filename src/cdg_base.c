@@ -406,12 +406,15 @@ struct { \
 }
 typedef Make_Iterator_Type(u8) _Any_Iterator;
 
-#define ITERATOR_TERMINATED(iterator) ((iterator).next_idx > (iterator).len)
 
 static inline void _advance(_Any_Iterator *iterator, u8 item_size) {
   DG_MEMCPY(&iterator->item, (iterator->data + (iterator->next_idx * item_size)), item_size);
   iterator->next_idx++;
 }
+
+#define ITERATOR_FROM_SLICE(type, name, slice) Make_Iterator_Type(type) name = { .data = (slice).data, .len = (slice).len }
+
+#define ITERATOR_TERMINATED(iterator) ((iterator).next_idx > (iterator).len)
 
 #define ITERATOR_ADVANCE(iterator) _advance((_Any_Iterator *) iterator, sizeof((iterator)->item))
 
@@ -420,6 +423,12 @@ static inline void _advance(_Any_Iterator *iterator, u8 item_size) {
   name.len  = (slice).len; \
   ITERATOR_ADVANCE(&name); \
 })
+
+#define ITERATE_SLICE(item_type, name, slice) for (\
+      ITERATOR_FROM_SLICE(item_type, name, slice); \
+      !ITERATOR_TERMINATED(name); \
+      ITERATOR_ADVANCE(&name))
+
 // }}}
 
 

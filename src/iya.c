@@ -62,7 +62,6 @@ ML_Model *init_model(Arena *a)
   const u32 inputs = 4;
   const u32 outputs = 1;
 
-
   DG_DAG *output = 0;
   for (u32 i = 0; i < inputs; ++i) {
 
@@ -241,23 +240,15 @@ void draw_dag(DG_Canvas canvas, Node_Slice nodes)
       u32 horizontal_space_available = canvas.width - (node_padding_x * 2);
       u32 vertical_space_available = canvas.height  - (node_padding_y * 2);
 
-      // u32 layer_spacing = 0;
-      // u32 node_spacing = 0;
-
-      // TODO: draw the connections
-      Make_Iterator_Type(Draw_Connection_Command) cmd_iter = {};
-      make_iterator(cmd_iter, cmd_buffer.connection_commands);
-      for (;!ITERATOR_TERMINATED(cmd_iter); ITERATOR_ADVANCE(&cmd_iter))
+      ITERATE_SLICE(Draw_Connection_Command, cmd_iter, cmd_buffer.connection_commands)
       {
-        Draw_Connection_Command cmd = cmd_iter.item;
-
         u32 x1 = 0;
         u32 y1 = 0;
         {
           u32 pos_x = 0;
           u32 pos_y = 0;
 
-          u32 layer_idx = cmd.node_loc.node->layer-1;
+          u32 layer_idx = cmd_iter.item.node_loc.node->layer-1;
           u32 layer_nodes_number = SLICE_AT(cmd_buffer.layers, layer_idx).len;
           u32 layers_number = cmd_buffer.layers.len;
           // x pos
@@ -271,7 +262,7 @@ void draw_dag(DG_Canvas canvas, Node_Slice nodes)
           // y pos
           if (layer_nodes_number > 1) {
             u32 vertical_node_spacing = vertical_space_available / (layer_nodes_number - 1);
-            pos_y = (vertical_node_spacing * cmd.node_loc.pos) + node_padding_y;
+            pos_y = (vertical_node_spacing * cmd_iter.item.node_loc.pos) + node_padding_y;
           } else {
             pos_y = (vertical_space_available / 2) + node_padding_y;
           }
@@ -286,7 +277,7 @@ void draw_dag(DG_Canvas canvas, Node_Slice nodes)
           u32 pos_x = 0;
           u32 pos_y = 0;
 
-          u32 layer_idx = cmd.child_loc.node->layer-1;
+          u32 layer_idx = cmd_iter.item.child_loc.node->layer-1;
           u32 layer_nodes_number = SLICE_AT(cmd_buffer.layers, layer_idx).len;
           u32 layers_number = cmd_buffer.layers.len;
           // x pos
@@ -300,7 +291,7 @@ void draw_dag(DG_Canvas canvas, Node_Slice nodes)
           // y pos
           if (layer_nodes_number > 1) {
             u32 vertical_node_spacing = vertical_space_available / (layer_nodes_number - 1);
-            pos_y = (vertical_node_spacing * cmd.child_loc.pos) + node_padding_y;
+            pos_y = (vertical_node_spacing * cmd_iter.item.child_loc.pos) + node_padding_y;
           } else {
             pos_y = (vertical_space_available / 2) + node_padding_y;
           }
