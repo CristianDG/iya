@@ -57,19 +57,34 @@
               let dataURL = globalCanvas.toDataURL();
               printImageBase64(dataURL, width, height)
             },
+            canvas_set_color: (r, g, b, a) => {
+              let ctx = globalCanvas.getContext('2d');
+              const color = `rgba(${r}, ${g}, ${b}, ${a})`
+              ctx.fillStyle = color
+              ctx.strokeStyle = color
+            },
             canvas_set_dimensions: (width, height) => {
               globalCanvas.width = width;
               globalCanvas.height = height;
             },
             canvas_draw_rect: (x, y, width, height, color) => {
               let ctx = globalCanvas.getContext('2d');
-              ctx.fillStyle = "#FFA500";
               ctx.fillRect(x, y, width, height);
             },
-            canvas_draw_circle: (cx, cy, r, color) => {
+            canvas_draw_circle: (cx, cy, r) => {
               let ctx = globalCanvas.getContext('2d');
-              ctx.fillStyle = "#00A500";
-              ctx.fillRect(cx - (r / 2), cy - (r / 2), r, r);
+              ctx.beginPath()
+              ctx.arc(cx, cy, r, 0, 2 * Math.PI)
+              ctx.fill()
+            },
+            canvas_draw_line: (x1, y1, x2, y2, thickness) => {
+              console.log(x1, y1, x2, y2)
+              let ctx = globalCanvas.getContext('2d');
+              ctx.beginPath();
+              ctx.moveTo(x1, y1);
+              ctx.lineTo(x2, y2);
+              ctx.lineWidth = thickness;
+              ctx.stroke();
             },
           })
         },

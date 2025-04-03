@@ -79,9 +79,10 @@ void free(void* p) {
 }
 
 extern void canvas_set_dimensions(u32 width, u32 height);
-extern void canvas_draw_circle(i32 cx, i32 cy, i32 r, u32 color);
-extern void canvas_draw_rect(i32 x, i32 y, i32 width, i32 height, u32 color);
-extern void canvas_draw_line(i32 x1, i32 y1, i32 x2, i32 y2, u32 thickness, u32 color);
+extern void canvas_set_color(u8 r, u8 g, u8 b, u8 a);
+extern void canvas_draw_circle(i32 cx, i32 cy, i32 r);
+extern void canvas_draw_rect(i32 x, i32 y, i32 width, i32 height);
+extern void canvas_draw_line(i32 x1, i32 y1, i32 x2, i32 y2, u32 thickness);
 
 #include "iya.c"
 

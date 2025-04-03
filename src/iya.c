@@ -234,6 +234,13 @@ void draw_dag(DG_Canvas canvas, Node_Slice nodes)
       u32 padding_y = 10;
       u32 padding_x = 10;
 
+      u32 node_radius = 10;
+      u32 node_padding_y = padding_y + node_radius;
+      u32 node_padding_x = padding_x + node_radius;
+
+      u32 horizontal_space_available = canvas.width - (node_padding_x * 2);
+      u32 vertical_space_available = canvas.height  - (node_padding_y * 2);
+
       // u32 layer_spacing = 0;
       // u32 node_spacing = 0;
 
@@ -243,15 +250,71 @@ void draw_dag(DG_Canvas canvas, Node_Slice nodes)
       for (;!ITERATOR_TERMINATED(cmd_iter); ITERATOR_ADVANCE(&cmd_iter))
       {
         Draw_Connection_Command cmd = cmd_iter.item;
-        // dg_draw_line
+
+        u32 x1 = 0;
+        u32 y1 = 0;
+        {
+          u32 pos_x = 0;
+          u32 pos_y = 0;
+
+          u32 layer_idx = cmd.node_loc.node->layer-1;
+          u32 layer_nodes_number = SLICE_AT(cmd_buffer.layers, layer_idx).len;
+          u32 layers_number = cmd_buffer.layers.len;
+          // x pos
+          if (cmd_buffer.layers.len > 1) {
+            u32 horizontal_node_spacing = horizontal_space_available / (layers_number - 1);
+            pos_x = (horizontal_node_spacing * layer_idx) + node_padding_x;
+          } else {
+            pos_x = (horizontal_space_available / 2) + node_padding_x;
+          }
+
+          // y pos
+          if (layer_nodes_number > 1) {
+            u32 vertical_node_spacing = vertical_space_available / (layer_nodes_number - 1);
+            pos_y = (vertical_node_spacing * cmd.node_loc.pos) + node_padding_y;
+          } else {
+            pos_y = (vertical_space_available / 2) + node_padding_y;
+          }
+
+          x1 = pos_x;
+          y1 = pos_y;
+        }
+
+        u32 x2 = 0;
+        u32 y2 = 0;
+        {
+          u32 pos_x = 0;
+          u32 pos_y = 0;
+
+          u32 layer_idx = cmd.child_loc.node->layer-1;
+          u32 layer_nodes_number = SLICE_AT(cmd_buffer.layers, layer_idx).len;
+          u32 layers_number = cmd_buffer.layers.len;
+          // x pos
+          if (cmd_buffer.layers.len > 1) {
+            u32 horizontal_node_spacing = horizontal_space_available / (layers_number - 1);
+            pos_x = (horizontal_node_spacing * layer_idx) + node_padding_x;
+          } else {
+            pos_x = (horizontal_space_available / 2) + node_padding_x;
+          }
+
+          // y pos
+          if (layer_nodes_number > 1) {
+            u32 vertical_node_spacing = vertical_space_available / (layer_nodes_number - 1);
+            pos_y = (vertical_node_spacing * cmd.child_loc.pos) + node_padding_y;
+          } else {
+            pos_y = (vertical_space_available / 2) + node_padding_y;
+          }
+
+          x2 = pos_x;
+          y2 = pos_y;
+        }
+
+        dg_draw_line(canvas, x1, y1, x2, y2, 2, (DG_Color){ 1, 1, 1, 1 });
       }
 
       // draw the nodes
       for (usize cmd_idx = 0; cmd_idx < cmd_buffer.node_commands.len; ++cmd_idx){
         Draw_Node_Command cmd = cmd_buffer.node_commands.data[cmd_idx];
-        u32 node_radius = 10;
-        u32 node_padding_y = padding_y + node_radius;
-        u32 node_padding_x = padding_x + node_radius;
 
         u32 layer_idx = cmd.loc.node->layer-1;
         u32 layer_nodes_number = SLICE_AT(cmd_buffer.layers, layer_idx).len;
@@ -260,8 +323,6 @@ void draw_dag(DG_Canvas canvas, Node_Slice nodes)
         u32 node_x = 0;
         u32 node_y = 0;
 
-        u32 horizontal_space_available = canvas.width - (node_padding_x * 2);
-        u32 vertical_space_available = canvas.height  - (node_padding_y * 2);
 
         // x pos
         if (cmd_buffer.layers.len > 1) {
@@ -281,8 +342,6 @@ void draw_dag(DG_Canvas canvas, Node_Slice nodes)
 
         dg_draw_circle(canvas, node_x, node_y, node_radius, (DG_Color){1, 1, 1, 1});
       }
-      console_log_canvas(canvas.width, canvas.height, canvas.pixels);
-      DG_ASSERT(!"not implemented");
     }
   }
 }

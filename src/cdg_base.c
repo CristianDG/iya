@@ -689,16 +689,19 @@ DG_Canvas dg_create_canvas(u32 width, u32 height) {
   return (DG_Canvas){ .width = width, .height = height };
 }
 
-void dg_fill_canvas(DG_Canvas canvas, DG_Color color){
-  canvas_draw_rect(0, 0, canvas.width, canvas.height, color_to_u32(color));
+void dg_fill_canvas(DG_Canvas canvas, DG_Color color) {
+  canvas_set_color(color.r * 255, color.g * 255, color.b * 255, color.a * 255);
+  canvas_draw_rect(0, 0, canvas.width, canvas.height);
 }
 
-void dg_draw_circle(DG_Canvas canvas, i32 cx, i32 cy, i32 r, DG_Color color){
-  canvas_draw_circle(cx, cy, r, color_to_u32(color));
+void dg_draw_circle(DG_Canvas canvas, i32 cx, i32 cy, i32 r, DG_Color color) {
+  canvas_set_color(color.r * 255, color.g * 255, color.b * 255, color.a * 255);
+  canvas_draw_circle(cx, cy, r);
 }
 
-void dg_draw_line(DG_Canvas canvas, i32 cx, i32 cy, i32 r, DG_Color color){
-
+void dg_draw_line(DG_Canvas canvas, i32 x1, i32 y1, i32 x2, i32 y2, u32 thickness, DG_Color color) {
+  canvas_set_color(color.r * 255, color.g * 255, color.b * 255, color.a * 255);
+  canvas_draw_line(x1, y1, x2, y2, thickness);
 }
 
 #endif // }}} DG_CANVAS_RENDERER_IMPLEMENTATION
