@@ -14,6 +14,9 @@
  * - debugger trap
  */
 
+#define global_variable static
+#define local_persist static
+
 #define DG_STATEMENT(x) do { x } while (0)
 
 #define ARRAY_LEN(arr) (sizeof(arr) / sizeof((arr)[0]))

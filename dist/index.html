@@ -7,15 +7,15 @@
     <script type="text/javascript" src="wasm.js"></script>
   </head>
   <body>
-    <h1>oi</h1>
+    <canvas id="display"></canvas>
     <script type="module" async>
 
-      function printImageBase64(data, width, height) {
+      function printImageBase64(data, width, height, scale) {
         const style = [
           'font-size: 1px;',
-          'padding: ' + height + 'px ' + width + 'px;',
+          'padding: ' + (height / 2) + 'px ' + (width / 2) + 'px;',
           'background: url('+ data +') no-repeat;',
-          'background-size: contain;'
+          'background-size: ' + width + 'px ' + height + 'px;',
         ].join(' ');
         console.log('%c ', style);
       }
@@ -26,17 +26,20 @@
         img.onload = function() {
           let canvas = document.createElement('CANVAS');
           let ctx = canvas.getContext('2d');
-          let dataURL;
           canvas.height = this.naturalHeight;
           canvas.width = this.naturalWidth;
           ctx.drawImage(this, 0, 0);
-          dataURL = canvas.toDataURL();
+
+          let dataURL = canvas.toDataURL();
           printImageBase64(dataURL, this.width, this.height)
         };
         img.src = src;
       }
 
-      const globalCanvas = document.createElement('CANVAS');
+      // TODO: debugCanvas
+      const backgroundCanvas = document.createElement('CANVAS')
+      const backgroundCanvasCtx = backgroundCanvas.getContext('2d', { willReadFrequently: true })
+      const displayingCanvas = document.querySelector('#display')
 
       window.wasmModule = (await runWasm("out.wasm",
         {
@@ -44,52 +47,68 @@
             console_log: str_ptr => console.log(wasmInterface.loadCstring(str_ptr)),
             console_error: str_ptr => console.error(wasmInterface.loadCstring(str_ptr)),
             tanh: Math.tanh,
+
+            // TODO: void switch_canvas(enum {DEBUG_CANVAS, BACKGROUND_CANVAS})
+
             console_log_canvas:  (width, height, pixels_ptr) => {
 
               // let canvas = document.createElement('CANVAS');
-              // let ctx = globalCanvas.getContext('2d');
-              // globalCanvas.width = width;
-              // globalCanvas.height = height;
-
+              // let ctx = backgroundCanvas.getContext('2d');
+              // backgroundCanvas.width = width;
+              // backgroundCanvas.height = height;
               // const image = new ImageData(new Uint8ClampedArray(wasmInterface.memory.buffer, pixels_ptr, width*height*4), width);
               // ctx.putImageData(image, 0, 0);
 
-              let dataURL = globalCanvas.toDataURL();
+              // TODO: usar debugCanvas
+              let dataURL = backgroundCanvas.toDataURL();
               printImageBase64(dataURL, width, height)
             },
             canvas_set_color: (r, g, b, a) => {
-              let ctx = globalCanvas.getContext('2d');
+              const ctx = backgroundCanvasCtx
               const color = `rgba(${r}, ${g}, ${b}, ${a})`
               ctx.fillStyle = color
               ctx.strokeStyle = color
             },
             canvas_set_dimensions: (width, height) => {
-              globalCanvas.width = width;
-              globalCanvas.height = height;
+              backgroundCanvas.width = width;
+              backgroundCanvas.height = height;
+
+              displayingCanvas.width = width;
+              displayingCanvas.height = height;
             },
             canvas_draw_rect: (x, y, width, height, color) => {
-              let ctx = globalCanvas.getContext('2d');
+              const ctx = backgroundCanvasCtx
               ctx.fillRect(x, y, width, height);
             },
             canvas_draw_circle: (cx, cy, r) => {
-              let ctx = globalCanvas.getContext('2d');
+              const ctx = backgroundCanvasCtx
               ctx.beginPath()
               ctx.arc(cx, cy, r, 0, 2 * Math.PI)
               ctx.fill()
             },
             canvas_draw_line: (x1, y1, x2, y2, thickness) => {
-              let ctx = globalCanvas.getContext('2d');
+              const ctx = backgroundCanvasCtx
               ctx.beginPath();
               ctx.moveTo(x1, y1);
               ctx.lineTo(x2, y2);
               ctx.lineWidth = thickness;
               ctx.stroke();
             },
+            canvas_draw: () => {
+              const backgroundCtx = backgroundCanvasCtx
+              const ctx = displayingCanvas.getContext('2d')
+              const imageData = backgroundCtx.getImageData(0, 0, backgroundCanvas.width, backgroundCanvas.height)
+              ctx.putImageData(imageData, 0, 0);
+            },
           })
         },
-      )).instance.exports
+      )).instance.exports;
 
-
+      wasmModule.start()
+      requestAnimationFrame(function step(dt) {
+        wasmModule.step(dt)
+        requestAnimationFrame(step)
+      })
 
     </script>
   </body>

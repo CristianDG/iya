@@ -337,8 +337,15 @@ void draw_dag(DG_Canvas canvas, Node_Slice nodes)
   }
 }
 
+typedef struct {
+  DG_Canvas canvas;
+  f32 dt;
+  // TODO: keyboard/mouse state
+} App_State;
 
-int main(void)
+global_variable App_State global_app_state = {};
+
+int start(void)
 {
   {
     usize size = 10 * KILOBYTE;
@@ -392,20 +399,27 @@ int main(void)
 
     }
 
-    u32 canvas_width = 256;
-    u32 canvas_height = 256;
-    void *canvas_memory = arena_alloc(&permanent_arena, sizeof(u32) * canvas_width * canvas_height);
+    u32 canvas_width = 640;
+    u32 canvas_height = 480;
+    // void *canvas_memory = arena_alloc(&permanent_arena, sizeof(u32) * canvas_width * canvas_height);
     // DG_Canvas canvas = {.pixels = canvas_memory, .width = canvas_width, .height = canvas_height };
-    DG_Canvas canvas = dg_create_canvas(canvas_width, canvas_height);
-    dg_fill_canvas(canvas, u32_to_color(0xFF000000));
+    global_app_state.canvas = dg_create_canvas(canvas_width, canvas_height);
+    dg_fill_canvas(global_app_state.canvas, u32_to_color(0xFF000000));
     // dg_draw_circle(canvas, 20, 60, 20, (DG_Color){ .2, .4, .6, 1 });
     // dg_draw_circle(canvas, 10, 20, 20, (DG_Color){ .2, .4, .6, 1 });
-    draw_dag(canvas, dag_nodes);
-    console_log_canvas(canvas.width, canvas.height, canvas.pixels);
+    draw_dag(global_app_state.canvas, dag_nodes);
+    console_log_canvas(global_app_state.canvas.width, global_app_state.canvas.height, global_app_state.canvas.pixels);
 
   }
 
   return 69;
+}
+
+void step(f32 dt) {
+  global_app_state.dt = dt;
+  dg_fill_canvas(global_app_state.canvas, u32_to_color(0xFF000000));
+
+  draw();
 }
 
 int fds(void)
