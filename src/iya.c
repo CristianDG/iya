@@ -338,8 +338,18 @@ void draw_dag(DG_Canvas canvas, Node_Slice nodes)
 }
 
 typedef struct {
+  f32 angle;
+  u32 length;
+  i32 origin_x;
+  i32 origin_y;
+  f32 velocity;
+  f32 acceleration;
+} Pendulum;
+
+typedef struct {
   DG_Canvas canvas;
   f32 dt;
+  Pendulum pendulum;
   // TODO: keyboard/mouse state
 } App_State;
 
@@ -384,7 +394,7 @@ int start(void)
         if (node->layer == 1) {
           node->value = node->value + node->bias;
         } else {
-          node->value = ftanh(node->value + node->bias);
+          node->value = tanhf(node->value + node->bias);
         }
 
         for (usize i = 0; i < node->children.len; ++i) {
@@ -412,12 +422,62 @@ int start(void)
 
   }
 
+  global_app_state.pendulum = (Pendulum){
+    .length = 150,
+    .angle = 179,
+    .origin_x = global_app_state.canvas.width / 2,
+    .origin_y = global_app_state.canvas.height / 2,
+  };
+
   return 69;
 }
 
-void step(f32 dt) {
+static DG_Color WHITE = {.r = 1, .g = 1, .b = 1, .a = 1};
+
+void update_pendulum(Pendulum *p, f32 dt) {
+
+  const f32 gravity = 9.8;
+  f32 acceleration = -1 * gravity * sin(p->angle);
+
+  p->velocity += acceleration * dt;
+  // air resistence
+  p->velocity *= .99;
+  p->angle += p->velocity;
+
+}
+
+void draw_pendulum(DG_Canvas canvas, Pendulum p) {
+
+  u32 arm_start_x = p.origin_x;
+  u32 arm_start_y = p.origin_y;
+
+  // sin cos ou cos sin???
+  u32 arm_end_x = arm_start_x + (i32)(sinf(p.angle) * (f32)p.length);
+  u32 arm_end_y = arm_start_y + (i32)(cosf(p.angle) * (f32)p.length);
+
+  dg_draw_line(
+    canvas,
+    arm_start_x, arm_start_y,
+    arm_end_x, arm_end_y,
+    5, WHITE);
+
+  dg_draw_circle(canvas, arm_end_x, arm_end_y, 20, WHITE);
+
+}
+
+void step(f64 dt) {
+  if (dt > 1) { return; }
+
+  bool dragging = false;
+
   global_app_state.dt = dt;
   dg_fill_canvas(global_app_state.canvas, u32_to_color(0xFF000000));
+
+  if (!dragging) {
+    update_pendulum(&global_app_state.pendulum, global_app_state.dt);
+  }
+
+  draw_pendulum(global_app_state.canvas, global_app_state.pendulum);
 
   draw();
 }

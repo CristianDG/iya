@@ -41,12 +41,18 @@
       const backgroundCanvasCtx = backgroundCanvas.getContext('2d', { willReadFrequently: true })
       const displayingCanvas = document.querySelector('#display')
 
+      /* TODO:
+      - keyboard state tracking
+      */
+
       window.wasmModule = (await runWasm("out.wasm",
         {
           "env": (wasmInterface) => ({
             console_log: str_ptr => console.log(wasmInterface.loadCstring(str_ptr)),
             console_error: str_ptr => console.error(wasmInterface.loadCstring(str_ptr)),
-            tanh: Math.tanh,
+            tanh: deg => Math.tanh(deg * (Math.PI / 180)),
+            cos : deg =>  Math.cos(deg * (Math.PI / 180)),
+            sin : deg =>  Math.sin(deg * (Math.PI / 180)),
 
             // TODO: void switch_canvas(enum {DEBUG_CANVAS, BACKGROUND_CANVAS})
 
@@ -62,6 +68,10 @@
               // TODO: usar debugCanvas
               let dataURL = backgroundCanvas.toDataURL();
               printImageBase64(dataURL, width, height)
+            },
+            get_mouse_position: (x_ptr, y_ptr) => {
+              wasmInterface.storeU32(x_ptr, 69)
+              wasmInterface.storeU32(y_ptr, 420)
             },
             canvas_set_color: (r, g, b, a) => {
               const ctx = backgroundCanvasCtx
@@ -105,7 +115,15 @@
       )).instance.exports;
 
       wasmModule.start()
-      requestAnimationFrame(function step(dt) {
+
+      let oldTimestamp;
+      requestAnimationFrame(function step(timestamp) {
+        if (oldTimestamp === undefined) {
+          oldTimestamp = timestamp
+        }
+        const dt = (timestamp - oldTimestamp) / 1000
+        oldTimestamp = timestamp
+
         wasmModule.step(dt)
         requestAnimationFrame(step)
       })

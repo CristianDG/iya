@@ -57,9 +57,13 @@ void *memcpy(void *dest, const void *src, usize size) {
 extern void console_log_canvas(u32 width, u32 height, void *pixels);
 
 extern f64 tanh(f64 val);
-f32 ftanh(f32 val) {
-  return (f32)tanh((f64) val);
-}
+static inline f32 tanhf(f32 val) { return (f32)tanh((f64) val); }
+
+extern f64 cos(f64 val);
+static inline f32 cosf(f32 val) { return (f32)cos((f64) val); }
+
+extern f64 sin(f64 val);
+static inline f32 sinf(f32 val) { return (f32)sin((f64) val); }
 
 // implementation from https://surma.dev/things/c-to-webassembly/
 extern u8 __heap_end;
@@ -84,6 +88,7 @@ extern void canvas_draw_circle(i32 cx, i32 cy, i32 r);
 extern void canvas_draw_rect(i32 x, i32 y, i32 width, i32 height);
 extern void canvas_draw_line(i32 x1, i32 y1, i32 x2, i32 y2, u32 thickness);
 extern void canvas_draw();
+extern void get_mouse_position(u32 *x, u32 *y);
 
 void draw() {
   canvas_draw();

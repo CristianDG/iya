@@ -8,6 +8,7 @@ flags+=" -std=c11"
 
 flags+=" -Wall -Werror"
 flags+=" -Wno-unused-variable"
+flags+=" -Wno-unused-function"
 
 flags+=" -DDG_PLATFORM_WASM"
 flags+=" -Ithird_party"
