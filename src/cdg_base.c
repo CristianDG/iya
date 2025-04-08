@@ -4,6 +4,21 @@
 #ifndef CDG_TYPES_H
 #define CDG_TYPES_H
 
+#if 1 // wip: context cracking {{{
+
+
+#ifdef __GNUC__
+#define COMPILER_GCC
+#define DG_COMPILER "gcc"
+#endif
+
+#ifdef __clang__
+#define COMPILER_CLANG
+#undef  DG_COMPILER
+#define DG_COMPILER "clang"
+#endif
+
+#endif // }}}
 
 #include <stdint.h>
 #include <stddef.h>
@@ -12,6 +27,7 @@
 /* TODO:
  * - context cracking
  * - debugger trap
+ * - defer macro
  */
 
 #define global_variable static
@@ -110,6 +126,12 @@ DG_STATEMENT({ \
   } \
 })
 #endif // DG_ASSERT }}}
+
+#if defined(COMPILER_CLANG) || defined(COMPILER_GCC)
+#define DG_DEFER_CALL(fn) __attribute__((cleanup(fn)))
+#else
+#error "compiler not compatible with this feature"
+#endif /* ifdef COMPILER_CLANG) || defined(COMPILER_GCC) */
 
 #endif // }}}
 
