@@ -93,10 +93,11 @@ typedef u32 b32;
 #define DG_DYNAMIC_ACCESS(type, offset) \
   (((void *)(type))+offset)
 
-#define DG_SWAP(type, a, b) DG_STATEMENT({ \
+#define DG_SWAP(type, a, b) ({ \
   type _tmp = *(a); \
   *(a) = *(b); \
   *(b) = _tmp; \
+  (void)0; \
 })
 
 
@@ -405,7 +406,7 @@ void dg_make_slice(Arena *a, _Any_Slice *slice, u64 len, u64 item_size){
 /*
 FIXME:
 fazer a implementação funcionar diretamente dentro de um for
-Eu acretido que da pra fazer isso se passar o slice em `ITERATOR_ADVANCE`
+Eu acredito que da pra fazer isso se passar o slice em `ITERATOR_ADVANCE`
 
 exemplo:
 
@@ -723,9 +724,13 @@ DG_Canvas dg_create_canvas(u32 width, u32 height) {
   return (DG_Canvas){ .width = width, .height = height };
 }
 
-void dg_fill_canvas(DG_Canvas canvas, DG_Color color) {
+void dg_draw_rect(DG_Canvas canvas, u32 x, u32 y, u32 width, u32 height , DG_Color color) {
   canvas_set_color(color.r * 255, color.g * 255, color.b * 255, color.a * 255);
-  canvas_draw_rect(0, 0, canvas.width, canvas.height);
+  canvas_draw_rect(x, y, width, height);
+}
+
+void dg_fill_canvas(DG_Canvas canvas, DG_Color color) {
+  dg_draw_rect(canvas, 0, 0, canvas.width, canvas.height, color);
 }
 
 void dg_draw_circle(DG_Canvas canvas, i32 cx, i32 cy, i32 r, DG_Color color) {

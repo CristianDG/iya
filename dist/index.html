@@ -45,11 +45,20 @@
       - keyboard state tracking
       */
 
+      const KEYS = {}
+      window.onkeydown = function(e) {
+        KEYS[e.key] = true
+      }
+      window.onkeyup = function(e) {
+        KEYS[e.key] = false
+      }
+
       window.wasmModule = (await runWasm("out.wasm",
         {
           "env": (wasmInterface) => ({
             console_log: str_ptr => console.log(wasmInterface.loadCstring(str_ptr)),
             console_error: str_ptr => console.error(wasmInterface.loadCstring(str_ptr)),
+            random: Math.random,
             tanh: deg => Math.tanh(deg * (Math.PI / 180)),
             cos : deg =>  Math.cos(deg * (Math.PI / 180)),
             sin : deg =>  Math.sin(deg * (Math.PI / 180)),
@@ -110,6 +119,10 @@
               const imageData = backgroundCtx.getImageData(0, 0, backgroundCanvas.width, backgroundCanvas.height)
               ctx.putImageData(imageData, 0, 0);
             },
+            is_button_pressed: chr => {
+              let char = String.fromCharCode(chr)
+              return KEYS[char]
+            }
           })
         },
       )).instance.exports;

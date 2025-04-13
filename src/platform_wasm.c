@@ -87,12 +87,15 @@ extern void canvas_set_color(u8 r, u8 g, u8 b, u8 a);
 extern void canvas_draw_circle(i32 cx, i32 cy, i32 r);
 extern void canvas_draw_rect(i32 x, i32 y, i32 width, i32 height);
 extern void canvas_draw_line(i32 x1, i32 y1, i32 x2, i32 y2, u32 thickness);
-extern void canvas_draw();
 extern void get_mouse_position(u32 *x, u32 *y);
+extern bool is_button_pressed(char btn);
+extern void canvas_draw();
+extern f64  random(void);
 
 void draw() {
   canvas_draw();
 }
+
 
 #include "iya.c"
 

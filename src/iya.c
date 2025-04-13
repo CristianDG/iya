@@ -340,16 +340,23 @@ void draw_dag(DG_Canvas canvas, Node_Slice nodes)
 typedef struct {
   f32 angle;
   u32 length;
-  i32 origin_x;
-  i32 origin_y;
   f32 velocity;
-  f32 acceleration;
+  // f32 acceleration;
 } Pendulum;
+
+typedef struct {
+  f32 pos_x;
+  f32 pos_y;
+  f32 velocity;
+  Pendulum pendulum;
+} Cart;
+#define CART_WIDTH  50
+#define CART_HEIGHT 20
 
 typedef struct {
   DG_Canvas canvas;
   f32 dt;
-  Pendulum pendulum;
+  Cart cart;
   // TODO: keyboard/mouse state
 } App_State;
 
@@ -422,11 +429,14 @@ int start(void)
 
   }
 
-  global_app_state.pendulum = (Pendulum){
-    .length = 150,
-    .angle = 179,
-    .origin_x = global_app_state.canvas.width / 2,
-    .origin_y = global_app_state.canvas.height / 2,
+
+  global_app_state.cart = (Cart){
+    .pos_x = global_app_state.canvas.width / 2,
+    .pos_y = global_app_state.canvas.height / 2,
+    .pendulum = {
+      .length = 150,
+      .angle = 179,
+    }
   };
 
   return 69;
@@ -434,10 +444,12 @@ int start(void)
 
 static DG_Color WHITE = {.r = 1, .g = 1, .b = 1, .a = 1};
 
-void update_pendulum(Pendulum *p, f32 dt) {
+void update_pendulum(Pendulum *p, f32 acc_x, f32 dt) {
 
   const f32 gravity = 9.8;
-  f32 acceleration = -1 * gravity * sin(p->angle);
+  f32 acceleration_y = gravity * sin(p->angle);
+  f32 acceleration_x = acc_x * cos(p->angle);
+  f32 acceleration = -1 * (acceleration_x + acceleration_y);
 
   p->velocity += acceleration * dt;
   // air resistence
@@ -446,10 +458,32 @@ void update_pendulum(Pendulum *p, f32 dt) {
 
 }
 
-void draw_pendulum(DG_Canvas canvas, Pendulum p) {
+void update_cart(Cart *c, f32 acceleration_x, f32 dt) {
+  Cart new_cart = *c;
 
-  u32 arm_start_x = p.origin_x;
-  u32 arm_start_y = p.origin_y;
+  const f32 MAX_VEL = 150;
+  if (acceleration_x != 0) {
+    new_cart.velocity = CLAMP(new_cart.velocity - (acceleration_x * 2), -MAX_VEL, MAX_VEL);
+  } else {
+    new_cart.velocity *= .9;
+  }
+
+  new_cart.pos_x += new_cart.velocity * dt;
+
+  if (new_cart.pos_x < 0 || new_cart.pos_x > (global_app_state.canvas.width - CART_WIDTH)) {
+    new_cart.pos_x = CLAMP(new_cart.pos_x, 0, global_app_state.canvas.width - CART_WIDTH);
+    new_cart.velocity = 0;
+    // NOTE: eu acredito que isso não seja legal de fazer
+    acceleration_x = 0;
+  }
+
+  update_pendulum(&new_cart.pendulum, -acceleration_x, global_app_state.dt);
+
+  *c = new_cart;
+}
+
+
+void draw_pendulum(DG_Canvas canvas, u32 arm_start_x, u32 arm_start_y, Pendulum p) {
 
   // sin cos ou cos sin???
   u32 arm_end_x = arm_start_x + (i32)(sinf(p.angle) * (f32)p.length);
@@ -461,23 +495,64 @@ void draw_pendulum(DG_Canvas canvas, Pendulum p) {
     arm_end_x, arm_end_y,
     5, WHITE);
 
-  dg_draw_circle(canvas, arm_end_x, arm_end_y, 20, WHITE);
+  dg_draw_circle(canvas, arm_end_x, arm_end_y, 15, WHITE);
 
+}
+
+void draw_cart(DG_Canvas canvas, Cart cart) {
+
+  dg_draw_rect(
+    canvas,
+    cart.pos_x, cart.pos_y,
+    CART_WIDTH, CART_HEIGHT,
+    WHITE);
+
+  draw_pendulum(
+    canvas,
+    cart.pos_x + CART_WIDTH / 2,
+    cart.pos_y + CART_HEIGHT / 2,
+    cart.pendulum);
+
+}
+
+typedef enum {
+  ACTION_NONE,
+  ACTION_LEFT,
+  ACTION_RIGHT,
+} Action;
+
+Action get_action_from_player() {
+  Action result = ACTION_NONE;
+  if (is_button_pressed('a')) {
+    result = ACTION_LEFT;
+  }
+  if (is_button_pressed('d')) {
+    result = ACTION_RIGHT;
+  }
+  return result;
 }
 
 void step(f64 dt) {
   if (dt > 1) { return; }
 
-  bool dragging = false;
-
   global_app_state.dt = dt;
   dg_fill_canvas(global_app_state.canvas, u32_to_color(0xFF000000));
 
-  if (!dragging) {
-    update_pendulum(&global_app_state.pendulum, global_app_state.dt);
+  f32 acceleration_x = 0;
+  Action action = get_action_from_player();
+
+  {
+    const f32 ACCELERATION = 8;
+    if (action == ACTION_LEFT) {
+      acceleration_x = ACCELERATION;
+    }
+    if (action == ACTION_RIGHT) {
+      acceleration_x = -ACCELERATION;
+    }
   }
 
-  draw_pendulum(global_app_state.canvas, global_app_state.pendulum);
+  update_cart(&global_app_state.cart, acceleration_x, global_app_state.dt);
+  draw_cart(global_app_state.canvas, global_app_state.cart);
 
   draw();
 }
