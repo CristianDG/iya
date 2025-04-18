@@ -30,37 +30,6 @@
  * - defer macro
  */
 
-#define global_variable static
-#define local_persist static
-
-#define DG_STATEMENT(x) do { x } while (0)
-
-#define ARRAY_LEN(arr) (sizeof(arr) / sizeof((arr)[0]))
-#define ABS(x) ((x) > 0 ? (x) : -(x))
-#define MAX(x, y) ((x) >= (y) ? (x) : (y))
-#define MIN(x, y) ((x) <= (y) ? (x) : (y))
-#define CLAMP_TOP MIN
-#define CLAMP_BOTTOM MAX
-#define CLAMP(val, min, max) (val < min ? min : (val > max ? max : val))
-
-#define STR(x) #x
-#define GLUE(a,b) a##b
-
-#define ELEVENTH_ARGUMENT(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, ...) a11
-#define DG_NARGS(...) ELEVENTH_ARGUMENT(dummy, ## __VA_ARGS__, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
-
-
-#if !defined(DG_STATIC_ASSERT) // {{{
-
-#define DG_STATIC_ASSERT(args...) DG_STATIC_ASSERT_IMPL(DG_NARGS(args), args)
-#define DG_STATIC_ASSERT_IMPL(n, args...) GLUE(DG_STATIC_ASSERT_, n)(args)
-#define DG_STATIC_ASSERT_1(expr) _Static_assert(expr, "")
-#define DG_STATIC_ASSERT_2(expr, msg) _Static_assert(expr, msg)
-
-#endif // }}} DG_STATIC_ASSERT
-
-#define is_power_of_two(x) ((x != 0) && ((x & (x - 1)) == 0))
-
 typedef uint8_t  u8;
 typedef uint16_t u16;
 typedef uint32_t u32;
@@ -80,6 +49,127 @@ typedef float  f32;
 typedef double f64;
 
 typedef u32 b32;
+
+
+
+#define global_variable static
+#define local_persist static
+#define internal static
+
+#define DG_STATEMENT(x) do { x } while (0)
+
+#define ARRAY_LEN(arr) (sizeof(arr) / sizeof((arr)[0]))
+
+#define STR(x) #x
+#define GLUE(a,b) a##b
+
+#define ELEVENTH_ARGUMENT(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, ...) a11
+#define DG_NARGS(...) ELEVENTH_ARGUMENT(dummy, ## __VA_ARGS__, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
+
+
+#if !defined(DG_STATIC_ASSERT) // {{{
+
+#define DG_STATIC_ASSERT(args...) DG_STATIC_ASSERT_IMPL(DG_NARGS(args), args)
+#define DG_STATIC_ASSERT_IMPL(n, args...) GLUE(DG_STATIC_ASSERT_, n)(args)
+#define DG_STATIC_ASSERT_1(expr) _Static_assert(expr, "")
+#define DG_STATIC_ASSERT_2(expr, msg) _Static_assert(expr, msg)
+
+#endif // }}} DG_STATIC_ASSERT
+
+#define is_power_of_two(x) ((x != 0) && ((x & (x - 1)) == 0))
+
+
+// NUMERICAL_TYPES_GENERATE {{{
+#define NUMERICAL_TYPES_GENERATE \
+  X(u8)  \
+  X(u16) \
+  X(u32) \
+  X(u64) \
+  X(i8)  \
+  X(i16) \
+  X(i32) \
+  X(i64) \
+  X(f32) \
+  X(f64)
+
+#define X(type) internal inline type GLUE(type, _abs)(type a){ return a > 0 ? a : -a; }
+NUMERICAL_TYPES_GENERATE
+#undef X
+
+#define X(type) internal inline type GLUE(type, _max)(type a, type b){ return a > b ? a : b; }
+NUMERICAL_TYPES_GENERATE
+#undef X
+
+#define X(type) internal inline type GLUE(type, _min)(type a, type b){ return a < b ? a : b; }
+NUMERICAL_TYPES_GENERATE
+#undef X
+
+#define X(type) internal inline type GLUE(type, _clamp)(type val, type min, type max){ return val < min ? min : (val > max ? max : val); }
+NUMERICAL_TYPES_GENERATE
+#undef X
+
+#undef NUMERICAL_TYPES_GENERATE
+// }}}
+
+
+#define ABS(a) _Generic \
+  ((a), \
+   u8  : u8_abs,  \
+   u16 : u16_abs, \
+   u32 : u32_abs, \
+   u64 : u64_abs, \
+   i8  : i8_abs,  \
+   i16 : i16_abs, \
+   i32 : i32_abs, \
+   i64 : i64_abs, \
+   f32 : f32_abs, \
+   f64 : f64_abs  \
+   )(a)
+
+#define MAX(a, b) _Generic \
+  ((a) + (b), \
+   u8  : u8_max,  \
+   u16 : u16_max, \
+   u32 : u32_max, \
+   u64 : u64_max, \
+   i8  : i8_max,  \
+   i16 : i16_max, \
+   i32 : i32_max, \
+   i64 : i64_max, \
+   f32 : f32_max, \
+   f64 : f64_max  \
+   )(a, b)
+
+#define MIN(a, b) _Generic \
+  ((a) + (b), \
+   u8  : u8_min,  \
+   u16 : u16_min, \
+   u32 : u32_min, \
+   u64 : u64_min, \
+   i8  : i8_min,  \
+   i16 : i16_min, \
+   i32 : i32_min, \
+   i64 : i64_min, \
+   f32 : f32_min, \
+   f64 : f64_min  \
+   )(a, b)
+
+#define CLAMP(val, min, max) _Generic \
+  ((val) + (min) + (max), \
+   u8  : u8_clamp,  \
+   u16 : u16_clamp, \
+   u32 : u32_clamp, \
+   u64 : u64_clamp, \
+   i8  : i8_clamp,  \
+   i16 : i16_clamp, \
+   i32 : i32_clamp, \
+   i64 : i64_clamp, \
+   f32 : f32_clamp, \
+   f64 : f64_clamp  \
+   )(val, min, max)
+
+#define CLAMP_TOP MIN
+#define CLAMP_BOTTOM MAX
 
 #define KILOBYTE 1024
 #define MEGABYTE 1048576L
